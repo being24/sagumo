@@ -17,6 +17,7 @@ class MyBot(commands.Bot):
         super().__init__(command_prefix, help_command=None)
 
         self.INITIAL_COGS = [
+            'cogs.admin_cog',
         ]
 
         for cog in self.INITIAL_COGS:
@@ -64,5 +65,5 @@ if __name__ == '__main__':
     handler.setFormatter(formatter)
     root_logger.addHandler(handler)
 
-    bot = MyBot(command_prefix="/")
+    bot = MyBot(command_prefix="!")
     bot.run(token)
