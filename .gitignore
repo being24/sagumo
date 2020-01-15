@@ -1,0 +1,13 @@
+__pycache__
+*.txt
+.ipynb_checkpoints
+.vscode
+*.log
+*.csv
+*.ini
+*.ps1
+*.pdf
+token
+token.*
+*.ipynb
+*.stackdump
