@@ -18,6 +18,7 @@ class MyBot(commands.Bot):
 
         self.INITIAL_COGS = [
             'cogs.admin_cog',
+            'cogs.reaction_agg_cog',
         ]
 
         for cog in self.INITIAL_COGS:
@@ -33,7 +34,7 @@ class MyBot(commands.Bot):
         print(self.user.id)
         print('------')
         logging.info('rebooted')
-        await bot.change_presence(activity=discord.Game(name="plane bot"))
+        await bot.change_presence(activity=discord.Game(name="リアクション集計中"))
 
 
 def read_token():
