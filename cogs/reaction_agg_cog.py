@@ -20,17 +20,10 @@ class reaction(commands.Cog):
         with open(self.master_path + "/data/reacrion.json", encoding='utf-8') as f:
             self.reaction_dict = json.load(f)
 
-        print(self.reaction_dict)
-        print("Hi!")
-
-    @commands.command(aliases=['cnt'])
-    @commands.has_permissions(kick_members=True)
-    async def count(self, ctx, num: typing.Optional[int] = 6):
-        print(ctx.message.id)
-        self.reaction_dict[ctx.message.id] = num
+    def dump_json(self, json_data):
         with open(self.master_path + "/data/reacrion.json", "w") as f:
             json.dump(
-                self.reaction_dict,
+                json_data,
                 f,
                 ensure_ascii=False,
                 indent=4,
@@ -38,12 +31,38 @@ class reaction(commands.Cog):
                     ',',
                     ': '))
 
+    @commands.command(aliases=['cnt'])
+    @commands.has_permissions(kick_members=True)
+    async def count(self, ctx, num: typing.Optional[int] = 6):
+        msg = await ctx.send(f"{ctx.author.mention}\nリアクション集計を行います : 目標リアクション数 **{num}**")
+        self.reaction_dict[msg.id] = {
+            "cnt": num, "author": ctx.author.mention,
+            "reaction_sum": 0, "channel": ctx.channel.id,
+            "matte": 0}
+        self.dump_json(self.reaction_dict)
+
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, user):
-        print(reaction.message.id)
-        for mgs_id in self.reaction_dict.keys():
-            if mgs_id is reaction.message.id:
-                print("対象IDです")
+        for msg_id in list(self.reaction_dict):
+            if msg_id == reaction.message.id:
+                self.reaction_dict[msg_id]["reaction_sum"] += 1
+
+                if self.reaction_dict[msg_id]["cnt"] == self.reaction_dict[msg_id]["reaction_sum"]:
+                    channel = self.bot.get_channel(
+                        self.reaction_dict[msg_id]["channel"])
+                    mention = self.reaction_dict[msg_id]["author"]
+                    await channel.send(f"{mention} : 規定数のリアクションがたまりました")
+
+                    self.reaction_dict.pop(msg_id, None)
+
+                self.dump_json(self.reaction_dict)
+
+    @commands.Cog.listener()
+    async def on_reaction_remove(self, reaction, user):
+        for msg_id in self.reaction_dict.keys():
+            if msg_id == reaction.message.id:
+                self.reaction_dict[msg_id]["reaction_sum"] -= 1
+                self.dump_json(self.reaction_dict)
 
 
 def setup(bot):
