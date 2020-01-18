@@ -33,7 +33,11 @@ class reaction(commands.Cog):
 
     @commands.command(aliases=['cnt'])
     @commands.has_permissions(kick_members=True)
-    async def count(self, ctx, num: typing.Optional[int] = 6):
+    async def count(self, ctx, num: typing.Optional[int] = 0):
+        if num == 0:
+            await ctx.send("引数を正しく入力してください")
+            return
+
         msg = await ctx.send(f"{ctx.author.mention}\nリアクション集計を行います : 目標リアクション数 **{num}**")
         self.reaction_dict[msg.id] = {
             "cnt": num, "author": ctx.author.mention,
@@ -42,12 +46,20 @@ class reaction(commands.Cog):
         self.dump_json(self.reaction_dict)
 
     @commands.Cog.listener()
-    async def on_reaction_add(self, reaction, user):
+    async def on_raw_reaction_add(self, reaction):
+        print(reaction)
+        if reaction.message.author.bot is False:
+            pass
+
         for msg_id in list(self.reaction_dict):
             if msg_id == reaction.message.id:
+                if "matte" in reaction.emoji.name:
+                    print("待って")
+
                 self.reaction_dict[msg_id]["reaction_sum"] += 1
 
-                if self.reaction_dict[msg_id]["cnt"] == self.reaction_dict[msg_id]["reaction_sum"]:
+                if self.reaction_dict[msg_id]["cnt"] == self.reaction_dict[msg_id][
+                        "reaction_sum"] and self.reaction_dict[msg_id]["matte"] == 0:
                     channel = self.bot.get_channel(
                         self.reaction_dict[msg_id]["channel"])
                     mention = self.reaction_dict[msg_id]["author"]
@@ -58,11 +70,15 @@ class reaction(commands.Cog):
                 self.dump_json(self.reaction_dict)
 
     @commands.Cog.listener()
-    async def on_reaction_remove(self, reaction, user):
+    async def on_raw_reaction_remove(self, reaction):
         for msg_id in self.reaction_dict.keys():
             if msg_id == reaction.message.id:
                 self.reaction_dict[msg_id]["reaction_sum"] -= 1
                 self.dump_json(self.reaction_dict)
+
+    @commands.Cog.listener()
+    async def on_error(parameter_list):
+        pass
 
 
 def setup(bot):
