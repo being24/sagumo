@@ -67,5 +67,5 @@ if __name__ == '__main__':
     handler.setFormatter(formatter)
     root_logger.addHandler(handler)
 
-    bot = MyBot(command_prefix="!")
+    bot = MyBot(command_prefix="/")
     bot.run(token)
