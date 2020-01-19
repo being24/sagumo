@@ -31,6 +31,17 @@ class reaction(commands.Cog):
                     ',',
                     ': '))
 
+    async def judge_and_notice(self, msg_id):
+        if self.reaction_dict[msg_id]["cnt"] <= self.reaction_dict[msg_id][
+                "reaction_sum"] and self.reaction_dict[msg_id]["matte"] == 0:
+            channel = self.bot.get_channel(
+                self.reaction_dict[msg_id]["channel"])
+            mention = self.reaction_dict[msg_id]["author"]
+            await channel.send(f"{mention} : 規定数のリアクションがたまりました")
+
+            self.reaction_dict.pop(msg_id, None)
+            self.dump_json(self.reaction_dict)
+
     @commands.command(aliases=['cnt'])
     @commands.has_permissions(kick_members=True)
     async def count(self, ctx, num: typing.Optional[int] = 0):
@@ -50,11 +61,10 @@ class reaction(commands.Cog):
     async def clear(self, ctx):
         self.reaction_dict = {}
         self.dump_json(self.reaction_dict)
-        await ctx.send("全てのデータを削除しました")
+        await ctx.send("全てのjsonデータを削除しました")
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, reaction):
-        print("add")
         for msg_id in list(self.reaction_dict):
             if int(msg_id) == reaction.message_id:
                 if "matte" in reaction.emoji.name:
@@ -65,34 +75,21 @@ class reaction(commands.Cog):
                 else:
                     self.reaction_dict[msg_id]["reaction_sum"] += 1
 
-                if self.reaction_dict[msg_id]["cnt"] == self.reaction_dict[msg_id][
-                        "reaction_sum"] and self.reaction_dict[msg_id]["matte"] == 0:
-                    channel = self.bot.get_channel(
-                        self.reaction_dict[msg_id]["channel"])
-                    mention = self.reaction_dict[msg_id]["author"]
-                    await channel.send(f"{mention} : 規定数のリアクションがたまりました")
-
-                    self.reaction_dict.pop(msg_id, None)
-
-                self.dump_json(self.reaction_dict)
+                await self.judge_and_notice(msg_id)
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, reaction):
-        print("remove")
-        for msg_id in self.reaction_dict.keys():
+        for msg_id in list(self.reaction_dict):
             if int(msg_id) == reaction.message_id:
                 if "matte" in reaction.emoji.name:
                     self.reaction_dict[msg_id]["matte"] -= 1
                     channel = self.bot.get_channel(reaction.channel_id)
                     msg = await channel.fetch_message(reaction.message_id)
                     await msg.edit(content=msg.content.replace("\n待ちます", "", 1))
-
-                    # ここに判定
-
                 else:
                     self.reaction_dict[msg_id]["reaction_sum"] -= 1
 
-                self.dump_json(self.reaction_dict)
+                await self.judge_and_notice(msg_id)
 
 
 def setup(bot):
