@@ -11,3 +11,4 @@ token
 token.*
 *.ipynb
 *.stackdump
+!requirements.txt
