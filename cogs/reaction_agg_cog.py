@@ -45,18 +45,25 @@ class reaction(commands.Cog):
             "matte": 0}
         self.dump_json(self.reaction_dict)
 
+    @commands.command(aliases=['cl'])
+    @commands.has_permissions(kick_members=True)
+    async def clear(self, ctx):
+        self.reaction_dict = {}
+        self.dump_json(self.reaction_dict)
+        await ctx.send("全てのデータを削除しました")
+
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, reaction):
-        print(reaction)
-        if reaction.message.author.bot is False:
-            pass
-
+        print("add")
         for msg_id in list(self.reaction_dict):
-            if msg_id == reaction.message.id:
+            if int(msg_id) == reaction.message_id:
                 if "matte" in reaction.emoji.name:
-                    print("待って")
-
-                self.reaction_dict[msg_id]["reaction_sum"] += 1
+                    self.reaction_dict[msg_id]["matte"] += 1
+                    channel = self.bot.get_channel(reaction.channel_id)
+                    msg = await channel.fetch_message(reaction.message_id)
+                    await msg.edit(content=msg.content + "\n待ちます")
+                else:
+                    self.reaction_dict[msg_id]["reaction_sum"] += 1
 
                 if self.reaction_dict[msg_id]["cnt"] == self.reaction_dict[msg_id][
                         "reaction_sum"] and self.reaction_dict[msg_id]["matte"] == 0:
@@ -71,14 +78,21 @@ class reaction(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, reaction):
+        print("remove")
         for msg_id in self.reaction_dict.keys():
-            if msg_id == reaction.message.id:
-                self.reaction_dict[msg_id]["reaction_sum"] -= 1
-                self.dump_json(self.reaction_dict)
+            if int(msg_id) == reaction.message_id:
+                if "matte" in reaction.emoji.name:
+                    self.reaction_dict[msg_id]["matte"] -= 1
+                    channel = self.bot.get_channel(reaction.channel_id)
+                    msg = await channel.fetch_message(reaction.message_id)
+                    await msg.edit(content=msg.content.replace("\n待ちます", "", 1))
 
-    @commands.Cog.listener()
-    async def on_error(parameter_list):
-        pass
+                    # ここに判定
+
+                else:
+                    self.reaction_dict[msg_id]["reaction_sum"] -= 1
+
+                self.dump_json(self.reaction_dict)
 
 
 def setup(bot):
