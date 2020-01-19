@@ -63,10 +63,6 @@ class admin(commands.Cog):
     async def ping(self, ctx):
         await ctx.send('pong!')
 
-    @commands.Cog.listener()
-    async def on_command_error(self, ctx, message):
-        print(message)
-
 
 def setup(bot):
     bot.add_cog(admin(bot))

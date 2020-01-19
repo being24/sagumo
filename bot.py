@@ -19,6 +19,7 @@ class MyBot(commands.Bot):
         self.INITIAL_COGS = [
             'cogs.admin_cog',
             'cogs.reaction_agg_cog',
+            'cogs.error_handler',
         ]
 
         for cog in self.INITIAL_COGS:
