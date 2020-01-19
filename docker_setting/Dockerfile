@@ -12,12 +12,9 @@ RUN set -x && \
     pip3 install -U setuptools && \
     git clone https://github.com/being24/sagumo.git && \
     pip3 install -r ./sagumo/docker_setting/requirements.txt && \
-
-    # chmod 橘のとこ消す
+    chmod 0700 ./sagumo/*.sh && \
+    echo "Hello, sagumo ready!"
 
 VOLUME [ "./sagumo/data" ]
 
 CMD ["echo", "Now running..."]
-
-
-# docker run -it ubuntu:latest /bin/bash
