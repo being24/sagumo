@@ -49,7 +49,7 @@ class reaction(commands.Cog):
             await ctx.send("引数を正しく入力してください")
             return
 
-        msg = await ctx.send(f"{ctx.author.mention}\nリアクション集計を行います : 目標リアクション数 **{num}**")
+        msg = await ctx.send(f"{ctx.author.mention}\nリアクション集計を行います: 目標リアクション数 ** {num} **\n本メッセージにリアクションをつけてください")
         self.reaction_dict[msg.id] = {
             "cnt": num, "author": ctx.author.mention,
             "reaction_sum": 0, "channel": ctx.channel.id,
