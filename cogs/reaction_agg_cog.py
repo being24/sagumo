@@ -11,6 +11,13 @@ import discord
 from discord.ext import commands  # Bot Commands Frameworkのインポート
 
 
+def has_any_role():
+    async def predicate(ctx):
+        if len(ctx.author.roles) > 1:
+            return True
+    return commands.check(predicate)
+
+
 class reaction(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -43,7 +50,8 @@ class reaction(commands.Cog):
             self.dump_json(self.reaction_dict)
 
     @commands.command(aliases=['cnt'])
-    @commands.has_permissions(kick_members=True)
+    # @commands.has_permissions(kick_members=True)
+    @has_any_role()
     async def count(self, ctx, num: typing.Optional[int] = 0):
         if num == 0:
             await ctx.send("引数を正しく入力してください")
@@ -57,7 +65,7 @@ class reaction(commands.Cog):
         self.dump_json(self.reaction_dict)
 
     @commands.command(aliases=['cl'])
-    @commands.has_permissions(kick_members=True)
+    @commands.has_permissions(ban_members=True)
     async def clear(self, ctx):
         self.reaction_dict = {}
         self.dump_json(self.reaction_dict)
