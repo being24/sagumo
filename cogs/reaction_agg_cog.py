@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import typing
+from datetime import datetime, timedelta
 
 import discord
 from discord.ext import commands  # Bot Commands Frameworkのインポート
@@ -50,7 +51,6 @@ class reaction(commands.Cog):
             self.dump_json(self.reaction_dict)
 
     @commands.command(aliases=['cnt'])
-    # @commands.has_permissions(kick_members=True)
     @has_any_role()
     async def count(self, ctx, num: typing.Optional[int] = 0):
         if num == 0:
@@ -58,18 +58,61 @@ class reaction(commands.Cog):
             return
 
         msg = await ctx.send(f"{ctx.author.mention}\nリアクション集計を行います: 目標リアクション数 ** {num} **\n本メッセージにリアクションをつけてください")
+        today = datetime.today()
+        now = (today + timedelta(minutes=num)
+               ).strftime('%Y-%m-%d %H:%M:%S')
         self.reaction_dict[msg.id] = {
             "cnt": num, "author": ctx.author.mention,
             "reaction_sum": 0, "channel": ctx.channel.id,
-            "matte": 0}
+            "matte": 0, "time": now, "url": ctx.message.jump_url}
         self.dump_json(self.reaction_dict)
 
-    @commands.command(aliases=['cl'])
+    @commands.command(aliases=['ls'])
+    @has_any_role()
+    async def list_data(self, ctx):
+        if len(self.reaction_dict) == 0:
+            await ctx.send("集計中のリアクションはありません")
+        else:
+            embed = discord.Embed(
+                title="集計中のリアクションは以下の通りです",
+                description=f"{len(self.reaction_dict)}件集計中",
+                color=0xffffff)
+
+            for num, i in enumerate(self.reaction_dict):
+                auth = self.reaction_dict[i]["author"]
+                time = self.reaction_dict[i]["time"]
+                url = self.reaction_dict[i]["url"]
+                reaction_sum = self.reaction_dict[i]["reaction_sum"]
+                reaction_cnt = self.reaction_dict[i]["cnt"]
+
+                if self.reaction_dict[i]["matte"] > 0:
+                    matte = " **待って！**"
+                else:
+                    matte = ""
+
+                embed.add_field(
+                    name=f"{num}番目",
+                    value=f"ID : {i} by : {auth} time : {time} prog : {reaction_sum}/{reaction_cnt}{matte}\n{url}",
+                    inline=False)
+            embed.set_footer(text="あんまり貯めないでね")
+            await ctx.send(embed=embed)
+
     @commands.has_permissions(ban_members=True)
-    async def clear(self, ctx):
+    async def clear_all(self, ctx):
         self.reaction_dict = {}
         self.dump_json(self.reaction_dict)
         await ctx.send("全てのjsonデータを削除しました")
+
+    @commands.command(aliases=['rm'])
+    @commands.has_permissions(ban_members=True)
+    async def remove(self, ctx, num: typing.Optional[str]):
+        try:
+            url = self.reaction_dict[num]["url"]
+            del self.reaction_dict[num]
+            await ctx.send(f"1件削除しました\n{url}")
+        except KeyError:
+            await ctx.send(f"キーが存在しません")
+
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, reaction):
