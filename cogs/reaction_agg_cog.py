@@ -97,6 +97,7 @@ class reaction(commands.Cog):
             embed.set_footer(text="あんまり貯めないでね")
             await ctx.send(embed=embed)
 
+    @commands.command()
     @commands.has_permissions(ban_members=True)
     async def clear_all(self, ctx):
         self.reaction_dict = {}
@@ -107,8 +108,8 @@ class reaction(commands.Cog):
     @commands.has_permissions(ban_members=True)
     async def remove(self, ctx, num: typing.Optional[str]):
         try:
-            url = self.reaction_dict[num]["url"]
-            del self.reaction_dict[num]
+            url = self.reaction_dict[str(num)]["url"]
+            del self.reaction_dict[str(num)]
             await ctx.send(f"1件削除しました\n{url}")
         except KeyError:
             await ctx.send(f"キーが存在しません")
