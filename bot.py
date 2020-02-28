@@ -17,14 +17,11 @@ class MyBot(commands.Bot):
         super().__init__(command_prefix, help_command=None)
 
         self.INITIAL_COGS = [
-            'cogs.admin_cog',
-            'cogs.reaction_agg_cog',
-            'cogs.error_handler',
-        ]
+            filename[:-3] for filename in os.listdir("./cogs") if filename.endswith(".py")]
 
         for cog in self.INITIAL_COGS:
             try:
-                self.load_extension(cog)
+                self.load_extension(f'cogs.{cog}')
             except Exception:
                 traceback.print_exc()
 
