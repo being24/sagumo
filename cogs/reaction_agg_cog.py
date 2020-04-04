@@ -67,7 +67,7 @@ class reaction(commands.Cog):
         today = datetime.today()
         now = (today + timedelta(minutes=num)
                ).strftime('%Y-%m-%d %H:%M:%S')
-        self.reaction_dict[msg.id] = {
+        self.reaction_dict[str(msg.id)] = {
             "cnt": num,
             "author": ctx.author.mention,
             "reaction_sum": 0,
@@ -118,9 +118,10 @@ class reaction(commands.Cog):
     @commands.has_permissions(ban_members=True)
     async def remove(self, ctx, num: typing.Optional[str]):
         try:
-            num.replace(" ", "")
-            url = self.reaction_dict[str(num)]["url"]
-            del self.reaction_dict[str(num)]
+            voteid = num.replace(" ", "")
+            url = self.reaction_dict[voteid]["url"]
+            del self.reaction_dict[voteid]
+            self.dump_json(self.reaction_dict)
             await ctx.send(f"1件削除しました\n{url}")
         except KeyError:
             await ctx.send(f"キーが存在しません")
