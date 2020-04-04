@@ -3,7 +3,6 @@
 
 import codecs
 import json
-import logging.config
 import os
 import sys
 import traceback
@@ -25,13 +24,15 @@ class MyBot(commands.Bot):
             except Exception:
                 traceback.print_exc()
 
+        with open(currentpath + "/setting.json", encoding='utf-8') as f:
+            self.json_data = json.load(f)
+
     async def on_ready(self):
         print('-----')
         print('Logged in as')
         print(self.user.name)
         print(self.user.id)
         print('------')
-        logging.info('rebooted')
         await bot.change_presence(activity=discord.Game(name="リアクション集計中"))
 
 
@@ -53,16 +54,6 @@ if __name__ == '__main__':
     currentpath = os.path.dirname(os.path.abspath(__file__))
 
     token = read_token()
-
-    root_logger = logging.getLogger()
-    root_logger.setLevel(logging.INFO)
-
-    handler = logging.FileHandler(
-        currentpath + "/data/log/logger.log", 'a', 'utf-8')
-    formatter = logging.Formatter(
-        '%(levelname)s : %(asctime)s : %(message)s')
-    handler.setFormatter(formatter)
-    root_logger.addHandler(handler)
 
     bot = MyBot(command_prefix="/")
     bot.run(token)
