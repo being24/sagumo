@@ -25,11 +25,17 @@ class reaction(commands.Cog):
         self.master_path = os.path.dirname(
             os.path.dirname(os.path.abspath(__file__)))
 
-        with open(self.master_path + "/data/reacrion.json", encoding='utf-8') as f:
+        self.json_name = self.master_path + "/data/reacrion.json"
+
+        if not os.path.isfile(self.json_name):
+            self.reaction_dict = {}
+            self.dump_json(self.reaction_dict)
+
+        with open(self.json_name, encoding='utf-8') as f:
             self.reaction_dict = json.load(f)
 
     def dump_json(self, json_data):
-        with open(self.master_path + "/data/reacrion.json", "w") as f:
+        with open(self.json_name, "w") as f:
             json.dump(
                 json_data,
                 f,
