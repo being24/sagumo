@@ -62,9 +62,13 @@ class reaction(commands.Cog):
         now = (today + timedelta(minutes=num)
                ).strftime('%Y-%m-%d %H:%M:%S')
         self.reaction_dict[msg.id] = {
-            "cnt": num, "author": ctx.author.mention,
-            "reaction_sum": 0, "channel": ctx.channel.id,
-            "matte": 0, "time": now, "url": ctx.message.jump_url}
+            "cnt": num,
+            "author": ctx.author.mention,
+            "reaction_sum": 0,
+            "channel": ctx.channel.id,
+            "matte": 0,
+            "time": now,
+            "url": ctx.message.jump_url}
         self.dump_json(self.reaction_dict)
 
     @commands.command(aliases=['ls'])
@@ -91,7 +95,7 @@ class reaction(commands.Cog):
                     matte = ""
 
                 embed.add_field(
-                    name=f"{num}番目",
+                    name=f"{num+1}番目",
                     value=f"ID : {i} by : {auth} time : {time} prog : {reaction_sum}/{reaction_cnt}{matte}\n{url}",
                     inline=False)
             embed.set_footer(text="あんまり貯めないでね")
@@ -108,12 +112,12 @@ class reaction(commands.Cog):
     @commands.has_permissions(ban_members=True)
     async def remove(self, ctx, num: typing.Optional[str]):
         try:
+            num.replace(" ", "")
             url = self.reaction_dict[str(num)]["url"]
             del self.reaction_dict[str(num)]
             await ctx.send(f"1件削除しました\n{url}")
         except KeyError:
             await ctx.send(f"キーが存在しません")
-
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, reaction):
