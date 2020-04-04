@@ -39,10 +39,7 @@ class admin(commands.Cog):
                 await ctx.send(f"{cog} reloaded")
             except Exception as e:
                 print(e)
-
-    @reload.error
-    async def reload_error(self, ctx, error):
-        await ctx.send(f'to <@{self.bot.admin_id}> at {ctx.command.name} command\n{error}')
+        await ctx.send("done")
 
     @commands.command(aliases=['st'], hidden=True)
     @is_owner()
@@ -55,13 +52,21 @@ class admin(commands.Cog):
         except BaseException:
             pass
 
-    @status.error
-    async def status_error(self, ctx, error):
-        await ctx.send(f'to <@{self.bot.admin_id}> at {ctx.command.name} command\n{error}')
-
     @commands.command(aliases=['p'], hidden=True)
     async def ping(self, ctx):
         await ctx.send('pong!')
+
+    @commands.command(aliases=['wh'], hidden=True)
+    @is_owner()
+    async def where(self, ctx):
+        await ctx.send("現在入っているサーバーは以下です")
+        for s in ctx.cog.bot.guilds:
+            await ctx.send(f"{s}")
+
+    @commands.command(aliases=['mem'], hidden=True)
+    @is_owner()
+    async def num_of_member(self, ctx):
+        await ctx.send(f"{ctx.guild.member_count}")
 
 
 def setup(bot):
