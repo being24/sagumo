@@ -12,4 +12,5 @@ token.*
 *.ipynb
 *.stackdump
 !requirements.txt
-reacrion.json
+*.json
+!setting.json
