@@ -60,11 +60,10 @@ class admin(commands.Cog):
 
     @commands.command(aliases=['p'], hidden=True)
     async def ping(self, ctx):
-        startt = time.time()
+        start_time = time.time()
         mes = await ctx.send("Pinging....")
 
-        await mes.edit(content="pong!\n" + str(round(time.time() - startt, 3)
-                                               * 1000) + "ms")
+        await mes.edit(content="pong!\n" + str(round(time.time() - start_time, 3) * 1000) + "ms")
 
     @commands.command(aliases=['wh'], hidden=True)
     @is_double_owner()
