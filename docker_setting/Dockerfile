@@ -6,8 +6,6 @@ ENV LC_CTYPE='C.UTF-8'
 ENV TZ='Asia/Tokyo'
 ENV DEBIAN_FRONTEND=noninteractive
 
-COPY token /opt
-
 RUN set -x && \
     apt-get update && \
     apt-get install -y --no-install-recommends python3.7 python3-pip nano git tzdata&& \
@@ -19,7 +17,6 @@ RUN set -x && \
     pip3 install -r ./sagumo/docker_setting/requirements.txt && \
     chmod 0700 ./sagumo/*.sh && \
     chmod 0700 ./sagumo/bot.py && \
-    mv /opt/token /opt/sagumo && \
     echo "Hello, sagumo ready!"
 
 CMD ["/opt/sagumo/bot.sh"]
