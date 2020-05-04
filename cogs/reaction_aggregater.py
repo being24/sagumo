@@ -25,7 +25,7 @@ class reaction(commands.Cog):
         self.master_path = os.path.dirname(
             os.path.dirname(os.path.abspath(__file__)))
 
-        self.json_name = self.master_path + "/data/reacrion.json"
+        self.json_name = self.master_path + "/data/reaction.json"
 
         if not os.path.isfile(self.json_name):
             self.reaction_dict = {}
@@ -58,12 +58,21 @@ class reaction(commands.Cog):
 
     @commands.command(aliases=['cnt'])
     @has_any_role()
-    async def count(self, ctx, num: typing.Optional[int] = 0):
+    async def count(self, ctx, num: typing.Optional[int] = 0, *roles: discord.Role):
         if num == 0:
             await ctx.send("引数を正しく入力してください")
             return
 
-        msg = await ctx.send(f"{ctx.author.mention}\nリアクション集計を行います: 目標リアクション数 ** {num} **\n本メッセージにリアクションをつけてください")
+        first_msg = f"{ctx.author.mention}\nリアクション集計を行います: 目標リアクション数 : **{num}**"
+
+        if len(roles) > 0:
+            mid_msg = f"指定された役職 : {' '.join([i.mention for i in roles])}\n"
+        else:
+            mid_msg = ""
+
+        last_msg = "本メッセージにリアクションをつけてください"
+
+        msg = await ctx.send(f"{first_msg}\n{mid_msg}{last_msg}")
         today = datetime.today()
         now = (today + timedelta(minutes=num)
                ).strftime('%Y-%m-%d %H:%M:%S')
@@ -74,7 +83,8 @@ class reaction(commands.Cog):
             "channel": ctx.channel.id,
             "matte": 0,
             "time": now,
-            "url": ctx.message.jump_url}
+            "url": ctx.message.jump_url,
+            "role": [i.id for i in roles]}
         self.dump_json(self.reaction_dict)
 
     @commands.command(aliases=['ls'])
@@ -102,7 +112,7 @@ class reaction(commands.Cog):
 
                 embed.add_field(
                     name=f"{num+1}番目",
-                    value=f"ID : {i} by : {auth} time : {time} prog : {reaction_sum}/{reaction_cnt}{matte}\n{url}",
+                    value=f"ID : {i} by : {auth} time : {time} progress : {reaction_sum}/{reaction_cnt}{matte}\n{url}",
                     inline=False)
             embed.set_footer(text="あんまり貯めないでね")
             await ctx.send(embed=embed)
@@ -118,9 +128,9 @@ class reaction(commands.Cog):
     @commands.has_permissions(ban_members=True)
     async def remove(self, ctx, num: typing.Optional[str]):
         try:
-            voteid = num.replace(" ", "")
-            url = self.reaction_dict[voteid]["url"]
-            del self.reaction_dict[voteid]
+            aggregate_id = num.replace(" ", "")
+            url = self.reaction_dict[aggregate_id]["url"]
+            del self.reaction_dict[aggregate_id]
             self.dump_json(self.reaction_dict)
             await ctx.send(f"1件削除しました\n{url}")
         except KeyError:
