@@ -8,18 +8,13 @@ import time
 import typing
 
 import discord
-from discord.ext import commands  # Bot Commands Frameworkのインポート
+from discord.ext import commands
 
 
-def is_in_guild():
+def is_double_owner():  # botのオーナーかつサーバー主のみが実行できるコマンド
     async def predicate(ctx):
-        return ctx.guild and ctx.guild.id == 609058923353341973
-    return commands.check(predicate)
-
-
-def is_owner():
-    async def predicate(ctx):
-        return ctx.author.id == 277825292536512513
+        return ctx.guild and ctx.author.id == ctx.guild.owner_id \
+            and ctx.author.id == ctx.bot.owner_id
     return commands.check(predicate)
 
 
@@ -29,9 +24,12 @@ class admin(commands.Cog):
         self.master_path = os.path.dirname(
             os.path.dirname(os.path.abspath(__file__)))
 
+    @commands.Cog.listener()
+    async def on_ready(self):
+        await self.bot.is_owner(self.bot.user)
+
     @commands.group(aliases=['re'], hidden=True)
-    @is_owner()
-    @is_in_guild()
+    @is_double_owner()
     async def reload(self, ctx, cogname: typing.Optional[str] = "ALL"):
         if cogname is "ALL":
             for cog in self.bot.INITIAL_COGS:
@@ -51,8 +49,7 @@ class admin(commands.Cog):
                 await ctx.send(e)
 
     @commands.command(aliases=['st'], hidden=True)
-    @is_owner()
-    @is_in_guild()
+    @is_double_owner()
     async def status(self, ctx, word: str):
         try:
             await self.bot.change_presence(activity=discord.Game(name=word))
@@ -66,17 +63,18 @@ class admin(commands.Cog):
         startt = time.time()
         mes = await ctx.send("Pinging....")
 
-        await mes.edit(content="pong!\n" + str(round(time.time() - startt, 3) * 1000) + "ms")
+        await mes.edit(content="pong!\n" + str(round(time.time() - startt, 3)
+                                               * 1000) + "ms")
 
     @commands.command(aliases=['wh'], hidden=True)
-    @is_owner()
+    @is_double_owner()
     async def where(self, ctx):
         await ctx.send("現在入っているサーバーは以下です")
         for s in ctx.cog.bot.guilds:
             await ctx.send(f"{s}")
 
     @commands.command(aliases=['mem'], hidden=True)
-    @is_owner()
+    @is_double_owner()
     async def num_of_member(self, ctx):
         await ctx.send(f"{ctx.guild.member_count}")
 
