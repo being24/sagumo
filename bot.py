@@ -38,14 +38,15 @@ class MyBot(commands.Bot):
 
 def read_token():
     file = currentpath + "/token"
-    try:
+    if os.path.isfile(file):
         for line in open(file, 'r'):
             temp = line.replace(" ", "").strip().split("=")
             token = temp[1]
-    except FileNotFoundError:
-        print("ファイルが見つかりません・・・。")
-        print(sys.exc_info())
-        return
+    else:
+        token = os.getenv('DISCORD_BOT_TOKEN')
+
+    if not isinstance(token, str):
+        raise FileNotFoundError("Token not found err!")
 
     return token
 
@@ -55,5 +56,5 @@ if __name__ == '__main__':
 
     token = read_token()
 
-    bot = MyBot(command_prefix="/")
+    bot = MyBot(command_prefix=commands.when_mentioned_or('/'))
     bot.run(token)
