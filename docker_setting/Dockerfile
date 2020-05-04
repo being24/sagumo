@@ -10,7 +10,7 @@ COPY token /opt
 
 RUN set -x && \
     apt-get update && \
-    apt-get install -y --no-install-recommends python3.7 python3-pip nano git && \
+    apt-get install -y --no-install-recommends python3.7 python3-pip nano git tzdata&& \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     cp /usr/share/zoneinfo/Asia/Tokyo /etc/localtime && \
@@ -18,6 +18,7 @@ RUN set -x && \
     git clone https://github.com/being24/sagumo.git && \
     pip3 install -r ./sagumo/docker_setting/requirements.txt && \
     chmod 0700 ./sagumo/*.sh && \
+    chmod 0700 ./sagumo/bot.py && \
     mv /opt/token /opt/sagumo && \
     echo "Hello, sagumo ready!"
 
