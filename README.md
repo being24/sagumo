@@ -29,8 +29,7 @@ SCPJP discord用のリアクション集計bot(読みは気にしない方針で
 ```
 全てのリアクションの集計を取りやめます
 
-## 環境構築用メモ
-リポジトリ内のDockerfileと、tokenを記述したファイル名がtokenのファイル(token=bot_tokenの形で記述)を同一ディレクトリに入れ、ビルドしてrunすればOKです。
+## メモ
 ```sh
 docker pull being241/sagumo
 docker run -d -v sagumo-data:/opt --env-file .env --restart=always --name=sagumo being241/sagumo
