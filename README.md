@@ -33,7 +33,7 @@ SCPJP discord用のリアクション集計bot(読みは気にしない方針で
 リポジトリ内のDockerfileと、tokenを記述したファイル名がtokenのファイル(token=bot_tokenの形で記述)を同一ディレクトリに入れ、ビルドしてrunすればOKです。
 ```sh
 docker pull being241/sagumo
-sudo docker run -d -v antispam-data:/opt --env-file .env --restart=always --name=satsuki_antispam being241/antispambot 
+sudo docker run -d -v sagumo-data:/opt --env-file .env --restart=always --name=sagumo being241/sagumo
 ```
 
 docker hubからpullできるようにしました
