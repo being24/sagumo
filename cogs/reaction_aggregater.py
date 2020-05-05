@@ -105,6 +105,7 @@ class reaction(commands.Cog):
                 auth = self.reaction_dict[i]["author"]
                 time = self.reaction_dict[i]["time"]
                 url = self.reaction_dict[i]["url"]
+                role = ' '.join([f'<@&{i}>' for i in self.reaction_dict[i]["role"]])
                 reaction_sum = self.reaction_dict[i]["reaction_sum"]
                 reaction_cnt = self.reaction_dict[i]["cnt"]
 
@@ -115,7 +116,7 @@ class reaction(commands.Cog):
 
                 embed.add_field(
                     name=f"{num+1}番目",
-                    value=f"ID : {i} by : {auth} time : {time} progress : {reaction_sum}/{reaction_cnt}{matte}\n{url}",
+                    value=f"ID : {i} by : {auth} time : {time} progress : {reaction_sum}/{reaction_cnt}{matte} role : {role}\n{url}",
                     inline=False)
             embed.set_footer(text="あんまり貯めないでね")
             await ctx.send(embed=embed)
