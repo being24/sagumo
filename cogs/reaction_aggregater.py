@@ -151,10 +151,11 @@ class reaction(commands.Cog):
                     pass
                 else:
                     if len(set(reaction_role_ids) & set(member_role_ids)) == 0:
+                        self.reaction_dict[msg_id]["reaction_sum"] += 1
                         msg = await channel.fetch_message(reaction.message_id)
                         await msg.remove_reaction(str(reaction.emoji), reaction.member)
                         notify_msg = await channel.send(f"{reaction.member.mention} 権限無しのリアクションは禁止です！")
-                        await asyncio.sleep(10)
+                        await asyncio.sleep(5)
                         try:
                             await notify_msg.delete()
                         except discord.Forbidden:
@@ -172,6 +173,9 @@ class reaction(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, reaction):
+        remove_usr = self.bot.get_user(reaction.user_id)
+        if remove_usr.bot:
+            return
         for msg_id in list(self.reaction_dict):
             if int(msg_id) == reaction.message_id:
                 if "matte" in reaction.emoji.name:

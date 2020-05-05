@@ -9,7 +9,13 @@ SCPJP discord用のリアクション集計bot(読みは気にしない方針で
 /cnt 整数
 ```
 で、規定数のリアクションがたまったら、コマンド実行者にメンションをとばします。
-待ってのリアクションがあると、リアクションがたまってもメンションを飛ばしません
+待ってのリアクションがあると、リアクションがたまってもメンションを飛ばしません  
+リアクション可能な役職を限定したい場合は
+```
+/cnt 整数 discord.Role
+```
+でその役職限定にできます
+
 ```
 /ls
 ```
@@ -26,8 +32,10 @@ SCPJP discord用のリアクション集計bot(読みは気にしない方針で
 ## 環境構築用メモ
 リポジトリ内のDockerfileと、tokenを記述したファイル名がtokenのファイル(token=bot_tokenの形で記述)を同一ディレクトリに入れ、ビルドしてrunすればOKです。
 ```sh
-sudo docker build ./ -t sagumo
-sudo docker run -d -v  sagumo-data:/opt/sagumo --restart=always --name sagumo sagumo
+docker pull being241/sagumo
+sudo docker run -d -v antispam-data:/opt --env-file .env --restart=always --name=satsuki_antispam being241/antispambot 
 ```
-コンテナ内でpullした場合は忘れずに各ファイルに実行権限を付与すること  
-忘れると最悪ビルドしなおし
+
+docker hubからpullできるようにしました
+環境変数DISCORD_BOT_TOKENからtokenを読み取ります
+自分は.envファイルに環境変数DISCORD_BOT_TOKENにtokenを定義して渡してます
