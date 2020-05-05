@@ -69,7 +69,7 @@ class reaction(commands.Cog):
         first_msg = f"{ctx.author.mention}\nリアクション集計を行います: 目標リアクション数 : **{num}**"
 
         if len(roles) > 0:
-            mid_msg = f"指定された役職 : {' '.join([i.mention for i in roles])}\n"
+            mid_msg = f"指定された役職 : {' '.join([i.name for i in roles])}\n"
         else:
             mid_msg = ""
 
