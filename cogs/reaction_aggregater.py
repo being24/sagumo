@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 
+import asyncio
 import json
 import os
 import subprocess
@@ -54,6 +55,8 @@ class reaction(commands.Cog):
             await channel.send(f"{mention} : 規定数のリアクションがたまりました")
 
             self.reaction_dict.pop(msg_id, None)
+            self.dump_json(self.reaction_dict)
+        else:
             self.dump_json(self.reaction_dict)
 
     @commands.command(aliases=['cnt'])
@@ -140,9 +143,26 @@ class reaction(commands.Cog):
     async def on_raw_reaction_add(self, reaction):
         for msg_id in list(self.reaction_dict):
             if int(msg_id) == reaction.message_id:
+                channel = self.bot.get_channel(reaction.channel_id)
+                member_role_ids = [role.id for role in reaction.member.roles]
+                reaction_role_ids = self.reaction_dict[msg_id]["role"]
+
+                if len(reaction_role_ids) == 0:
+                    pass
+                else:
+                    if len(set(reaction_role_ids) & set(member_role_ids)) == 0:
+                        msg = await channel.fetch_message(reaction.message_id)
+                        await msg.remove_reaction(str(reaction.emoji), reaction.member)
+                        notify_msg = await channel.send(f"{reaction.member.mention} 権限無しのリアクションは禁止です！")
+                        await asyncio.sleep(10)
+                        try:
+                            await notify_msg.delete()
+                        except discord.Forbidden:
+                            pass
+                        return
+
                 if "matte" in reaction.emoji.name:
                     self.reaction_dict[msg_id]["matte"] += 1
-                    channel = self.bot.get_channel(reaction.channel_id)
                     msg = await channel.fetch_message(reaction.message_id)
                     await msg.edit(content=msg.content + "\n待ちます")
                 else:
