@@ -56,6 +56,7 @@ class admin(commands.Cog):
             self.bot.status = word
         except BaseException:
             pass
+        
 
     @commands.command(aliases=['p'], hidden=True)
     async def ping(self, ctx):
