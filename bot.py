@@ -1,14 +1,13 @@
 # !/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import codecs
 import json
 import os
-import sys
 import traceback
 
 import discord
 from discord.ext import commands
+from dotenv import load_dotenv
 
 
 class MyBot(commands.Bot):
@@ -24,7 +23,7 @@ class MyBot(commands.Bot):
             except Exception:
                 traceback.print_exc()
 
-        with open(currentpath + "/setting.json", encoding='utf-8') as f:
+        with open(currentpath + "/data/setting.json", encoding='utf-8') as f:
             self.json_data = json.load(f)
 
     async def on_ready(self):
@@ -37,16 +36,13 @@ class MyBot(commands.Bot):
 
 
 def read_token():
-    file = currentpath + "/token"
-    if os.path.isfile(file):
-        for line in open(file, 'r'):
-            temp = line.replace(" ", "").strip().split("=")
-            token = temp[1]
-    else:
-        token = os.getenv('DISCORD_BOT_TOKEN')
+    dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
+    load_dotenv(dotenv_path)
+
+    token = os.getenv('DISCORD_BOT_TOKEN')
 
     if not isinstance(token, str):
-        raise FileNotFoundError("Token not found err!")
+        raise FileNotFoundError("Token not found error!")
 
     return token
 
