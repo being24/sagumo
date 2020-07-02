@@ -8,7 +8,10 @@ import traceback
 
 import discord
 from discord.ext import commands
+from discord_sentry_reporting import use_sentry
 from dotenv import load_dotenv
+from sentry_sdk.integrations.aiohttp import AioHttpIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
 
 
 class MyBot(commands.Bot):
@@ -34,6 +37,7 @@ class MyBot(commands.Bot):
         print(self.user.name)
         print(self.user.id)
         print('------')
+        logging.warning('rebooted')
         await bot.change_presence(activity=discord.Game(name="リアクション集計中"))
 
 
@@ -42,21 +46,36 @@ def read_env():
     load_dotenv(dotenv_path)
 
     token = os.getenv('DISCORD_BOT_TOKEN')
+    dsn = os.getenv('SENTRY_DSN')
 
     if not isinstance(token, str):
         raise FileNotFoundError("Token not found error!")
+    if not isinstance(dsn, str):
+        raise FileNotFoundError("dsn not found error!")
 
-    return token
+    return token, dsn
 
 
 if __name__ == '__main__':
     logging.basicConfig(
         level=logging.INFO,
         format='%(levelname)s: %(message)s')
-    logging.disable(logging.WARNING)
+    logging.disable(logging.INFO)
+
+    sentry_logging = LoggingIntegration(
+        level=logging.INFO,        # Capture info and above as breadcrumbs
+        event_level=logging.WARNING  # Send errors as events
+    )
 
     currentpath = os.path.dirname(os.path.abspath(__file__))
 
     token, dsn = read_env()
+
     bot = MyBot(command_prefix=commands.when_mentioned_or('/'))
+
+    use_sentry(
+        bot,
+        dsn=dsn,
+        integrations=[AioHttpIntegration(), sentry_logging]
+    )
     bot.run(token)
