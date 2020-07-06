@@ -75,6 +75,17 @@ class admin(commands.Cog):
     async def num_of_member(self, ctx):
         await ctx.send(f"{ctx.guild.member_count}")
 
+    @commands.command(aliases=['send'], hidden=True)
+    @is_double_owner()
+    async def send_json(self, ctx):
+        json_files = [
+            filename for filename in os.listdir(self.master_path + "/data")
+            if filename.endswith(".json")]
+
+        my_files = [discord.File(f'{self.master_path}/data/{i}') for i in json_files]
+
+        await ctx.send(files=my_files)
+
 
 def setup(bot):
     bot.add_cog(admin(bot))
