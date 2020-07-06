@@ -3,7 +3,6 @@
 
 
 import os
-import subprocess
 import time
 import typing
 
@@ -30,7 +29,7 @@ class admin(commands.Cog):
     @commands.group(aliases=['re'], hidden=True)
     @is_server_owner()
     async def reload(self, ctx, cogname: typing.Optional[str] = "ALL"):
-        if cogname is "ALL":
+        if cogname == "ALL":
             for cog in self.bot.INITIAL_COGS:
                 try:
                     self.bot.unload_extension(f'cogs.{cog}')
@@ -63,7 +62,6 @@ class admin(commands.Cog):
         start_time = time.time()
         mes = await ctx.send("Pinging....")
         await mes.edit(content="pong!\n" + str(round(time.time() - start_time, 3) * 1000) + "ms")
-        await self.bot.is_owner(self.bot.user)
 
     @commands.command(aliases=['wh'], hidden=True)
     @is_server_owner()

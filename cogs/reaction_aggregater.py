@@ -4,13 +4,13 @@
 
 import asyncio
 import json
+import logging
 import os
-import subprocess
 import typing
 from datetime import datetime, timedelta
 
 import discord
-from discord.ext import commands  # Bot Commands Frameworkのインポート
+from discord.ext import commands
 
 
 def has_any_role():
@@ -77,8 +77,7 @@ class reaction(commands.Cog):
 
         msg = await ctx.send(f"{first_msg}\n{mid_msg}{last_msg}")
         today = datetime.today()
-        now = (today + timedelta(minutes=num)
-               ).strftime('%Y-%m-%d %H:%M:%S')
+        now = today.strftime('%Y-%m-%d %H:%M:%S')
         self.reaction_dict[str(msg.id)] = {
             "cnt": num,
             "author": ctx.author.mention,
@@ -89,6 +88,18 @@ class reaction(commands.Cog):
             "url": ctx.message.jump_url,
             "role": [i.id for i in roles]}
         self.dump_json(self.reaction_dict)
+
+    @count.error
+    async def count_error(self, ctx, error):
+        if isinstance(error, commands.BadArgument):
+            notify_msg = await ctx.send(f'{ctx.author.mention}\n引数エラーです\n順番が間違っていませんか？')
+            await asyncio.sleep(5)
+            try:
+                await notify_msg.delete()
+            except discord.Forbidden:
+                pass
+        else:
+            raise
 
     @commands.command(aliases=['ls'])
     @has_any_role()
@@ -105,7 +116,8 @@ class reaction(commands.Cog):
                 auth = self.reaction_dict[i]["author"]
                 time = self.reaction_dict[i]["time"]
                 url = self.reaction_dict[i]["url"]
-                role = ' '.join([f'<@&{i}>' for i in self.reaction_dict[i]["role"]])
+                role = ' '.join(
+                    [f'<@&{i}>' for i in self.reaction_dict[i]["role"]])
                 reaction_sum = self.reaction_dict[i]["reaction_sum"]
                 reaction_cnt = self.reaction_dict[i]["cnt"]
 
@@ -138,7 +150,7 @@ class reaction(commands.Cog):
             self.dump_json(self.reaction_dict)
             await ctx.send(f"1件削除しました\n{url}")
         except KeyError:
-            await ctx.send(f"キーが存在しません")
+            await ctx.send("キーが存在しません")
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, reaction):
@@ -154,7 +166,10 @@ class reaction(commands.Cog):
                     if len(set(reaction_role_ids) & set(member_role_ids)) == 0:
                         self.reaction_dict[msg_id]["reaction_sum"] += 1
                         msg = await channel.fetch_message(reaction.message_id)
-                        await msg.remove_reaction(str(reaction.emoji), reaction.member)
+                        try:
+                            await msg.remove_reaction(str(reaction.emoji), reaction.member)
+                        except discord.Forbidden:
+                            await channel.send('リアクションの除去に失敗しました.')
                         notify_msg = await channel.send(f"{reaction.member.mention} 権限無しのリアクションは禁止です！")
                         await asyncio.sleep(5)
                         try:
