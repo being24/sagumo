@@ -10,7 +10,7 @@ import discord
 from discord.ext import commands
 
 
-def is_server_owner():  # botのオーナーのみが実行できるコマンド
+def is_double_owner():  # botのオーナーのみが実行できるコマンド
     async def predicate(ctx):
         return ctx.guild and ctx.author.id == ctx.author.id
     return commands.check(predicate)
@@ -27,7 +27,7 @@ class admin(commands.Cog):
         await self.bot.is_owner(self.bot.user)
 
     @commands.group(aliases=['re'], hidden=True)
-    @is_server_owner()
+    @is_double_owner()
     async def reload(self, ctx, cogname: typing.Optional[str] = "ALL"):
         if cogname == "ALL":
             for cog in self.bot.INITIAL_COGS:
@@ -47,7 +47,7 @@ class admin(commands.Cog):
                 await ctx.send(e)
 
     @commands.command(aliases=['st'], hidden=True)
-    @is_server_owner()
+    @is_double_owner()
     async def status(self, ctx, word: str):
         try:
             await self.bot.change_presence(activity=discord.Game(name=word))
@@ -55,7 +55,6 @@ class admin(commands.Cog):
             self.bot.status = word
         except BaseException:
             pass
-        
 
     @commands.command(aliases=['p'], hidden=True)
     async def ping(self, ctx):
@@ -64,14 +63,14 @@ class admin(commands.Cog):
         await mes.edit(content="pong!\n" + str(round(time.time() - start_time, 3) * 1000) + "ms")
 
     @commands.command(aliases=['wh'], hidden=True)
-    @is_server_owner()
+    @is_double_owner()
     async def where(self, ctx):
         await ctx.send("現在入っているサーバーは以下です")
         for s in ctx.cog.bot.guilds:
             await ctx.send(f"{s}")
 
     @commands.command(aliases=['mem'], hidden=True)
-    @is_server_owner()
+    @is_double_owner()
     async def num_of_member(self, ctx):
         await ctx.send(f"{ctx.guild.member_count}")
 
@@ -82,7 +81,8 @@ class admin(commands.Cog):
             filename for filename in os.listdir(self.master_path + "/data")
             if filename.endswith(".json")]
 
-        my_files = [discord.File(f'{self.master_path}/data/{i}') for i in json_files]
+        my_files = [discord.File(f'{self.master_path}/data/{i}')
+                    for i in json_files]
 
         await ctx.send(files=my_files)
 
