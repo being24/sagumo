@@ -66,8 +66,9 @@ class admin(commands.Cog):
     @is_double_owner()
     async def where(self, ctx):
         await ctx.send("現在入っているサーバーは以下です")
-        for s in ctx.cog.bot.guilds:
-            await ctx.send(f"{s}")
+        server_list = [i.name.replace('\u3000', ' ')
+                       for i in ctx.cog.bot.guilds]
+        await ctx.send(f"{server_list}")
 
     @commands.command(aliases=['mem'], hidden=True)
     @is_double_owner()
@@ -85,6 +86,12 @@ class admin(commands.Cog):
                     for i in json_files]
 
         await ctx.send(files=my_files)
+
+    @commands.command(aliases=['receive'], hidden=True)
+    @is_double_owner()
+    async def receive_json(self, ctx):
+        for attachment in ctx.message.attachments:
+            await attachment.save(f"{self.master_path}/data/{attachment.filename}")
 
 
 def setup(bot):
