@@ -101,9 +101,9 @@ class reaction(commands.Cog):
         else:
             raise
 
-    @commands.command(aliases=['ls'])
+    @commands.command(aliases=['ls_ac'])
     @has_any_role()
-    async def list_data(self, ctx):
+    async def list_reaction(self, ctx):
         if len(self.reaction_dict) == 0:
             await ctx.send("集計中のリアクションはありません")
         else:
