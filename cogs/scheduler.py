@@ -46,6 +46,13 @@ class Scheduler(commands.Cog):
                     ',',
                     ': '))
 
+    async def autodel_msg(self, msg):
+        await asyncio.sleep(5)
+        try:
+            await msg.delete()
+        except discord.Forbidden:
+            pass
+
     @commands.command(aliases=['after'])
     @has_any_role()
     async def remind_after(self, ctx, text: str):
@@ -56,50 +63,63 @@ class Scheduler(commands.Cog):
         print(datetime.now())
 
     @has_any_role()
-    @commands.group(aliases=['every'], invoke_without_command=True)
-    async def remind_every(self, ctx, text: str, content: str, *roles: discord.Role):
-        # '%YY-%mm-%dd %HH:%MM'
-        text = mj.zen_to_han(text)
-        numbers = re.findall(r'\d+', text)
-        chars = re.findall(r'[a-zA-Z]', text)
+    @commands.group(aliases=['reminder'], invoke_without_command=True)
+    async def remind(self, ctx):
+        settime = 3
+        emoji_in = '\N{THUMBS UP SIGN}'
+        emoji_go = '\N{NEGATIVE SQUARED CROSS MARK}'
+        emoji_ok = '\N{WHITE HEAVY CHECK MARK}'
 
-        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        self.schedule_dict[str(ctx.message.id)] = {
-            "author": ctx.author.mention,
-            "channel": ctx.channel.id,
-            "time": now,
-            "url": ctx.message.jump_url,
-            "content": content,
-            "role": [i.id for i in roles]}
-        self.dump_json(self.schedule_dict)
-        print(numbers)
-        print(chars)
-        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        num_emoji_list = [f'{i}\ufe0f\u20e3' for i in range(10)]
 
-    @remind_every.command()
-    async def help(self, ctx):
-        await ctx.send('%YY-%mm-%dd %HH:%MM')
+        init_reaction_list = [emoji_ok, ] + num_emoji_list
 
-    @remind_every.error
-    async def remind_every_error(self, ctx, error):
+        embed = discord.Embed(title="リマインダを設定します", colour=0x1e90ff)
+        embed.add_field(
+            name="対話形式でリマインダを設定します",
+            value=f"無操作タイムアウトは{settime}分です\n少々お待ちください",
+            inline=True)
+        embed.set_footer(text='少し待ってからリアクションをつけてください')
+
+        main_msg = await ctx.send(embed=embed)
+
+        for reaction in init_reaction_list:
+            try:
+                await main_msg.add_reaction(reaction)
+            except commands.HTTPException:
+                err_msg = await ctx.send('HTTPExceptionエラーです')
+                await self.autodel_msg(err_msg)
+            except commands.Forbidden:
+                err_msg = await ctx.send('権限エラーです')
+                await self.autodel_msg(err_msg)
+            await asyncio.sleep(0.2)
+
+        while True:
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=settime * 60)
+            except asyncio.TimeoutError:
+                await main_msg.delete()
+                await ctx.send('タイムアウトしました')
+                break
+            else:
+                pass # ここから
+
+    @remind.error
+    async def remind_error(self, ctx, error):
         if isinstance(error, commands.BadArgument):
             notify_msg = await ctx.send(f'{ctx.author.mention}\n引数エラーです\n順番が間違っていませんか？')
-            await asyncio.sleep(5)
-            try:
-                await notify_msg.delete()
-            except discord.Forbidden:
-                pass
+            await self.autodel_msg(notify_msg)
         else:
             raise
 
-    @commands.command(aliases=['ls_r'])
+    @commands.command(aliases=['ls_mi'])
     @has_any_role()
     async def list_reminder(self, ctx):
         if len(self.schedule_dict) == 0:
-            await ctx.send("集計中のリアクションはありません")
+            await ctx.send("予定されたリマインダはありません")
         else:
             embed = discord.Embed(
-                title="集計中のリアクションは以下の通りです",
+                title="予定されたリマインダは以下の通りです",
                 description=f"{len(self.schedule_dict)}件集計中",
                 color=0xffffff)
 
