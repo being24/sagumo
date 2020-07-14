@@ -12,7 +12,8 @@ from discord.ext import commands
 
 def is_double_owner():  # botのオーナーのみが実行できるコマンド
     async def predicate(ctx):
-        return ctx.guild and ctx.author.id == ctx.author.id
+        return ctx.guild and (ctx.bot.owner_id == ctx.author.id or ctx.author.id in ctx.bot.owner_ids)
+        return ctx.guild and ctx.bot.is_owner(ctx.author)
     return commands.check(predicate)
 
 
@@ -67,7 +68,7 @@ class admin(commands.Cog):
     async def where(self, ctx):
         await ctx.send("現在入っているサーバーは以下です")
         server_list = [i.name.replace('\u3000', ' ')
-                       for i in ctx.cog.bot.guilds]
+                       for i in ctx.bot.guilds]
         await ctx.send(f"{server_list}")
 
     @commands.command(aliases=['mem'], hidden=True)
