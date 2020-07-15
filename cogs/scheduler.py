@@ -47,9 +47,8 @@ class Scheduler(commands.Cog):
                     ': '))
 
     async def autodel_msg(self, msg):
-        await asyncio.sleep(5)
         try:
-            await msg.delete()
+            await msg.delete(delay=5)
         except discord.Forbidden:
             pass
 

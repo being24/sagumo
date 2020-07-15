@@ -46,6 +46,12 @@ class reaction(commands.Cog):
                     ',',
                     ': '))
 
+    async def autodel_msg(self, msg):
+        try:
+            await msg.delete(delay=5)
+        except discord.Forbidden:
+            pass
+
     async def judge_and_notice(self, msg_id):
         if self.reaction_dict[msg_id]["cnt"] <= self.reaction_dict[msg_id][
                 "reaction_sum"] and self.reaction_dict[msg_id]["matte"] == 0:
@@ -93,11 +99,7 @@ class reaction(commands.Cog):
     async def count_error(self, ctx, error):
         if isinstance(error, commands.BadArgument):
             notify_msg = await ctx.send(f'{ctx.author.mention}\n引数エラーです\n順番が間違っていませんか？')
-            await asyncio.sleep(5)
-            try:
-                await notify_msg.delete()
-            except discord.Forbidden:
-                pass
+            await self.autodel_msg(notify_msg)
         else:
             raise
 
@@ -171,11 +173,7 @@ class reaction(commands.Cog):
                         except discord.Forbidden:
                             await channel.send('リアクションの除去に失敗しました.')
                         notify_msg = await channel.send(f"{reaction.member.mention} 権限無しのリアクションは禁止です！")
-                        await asyncio.sleep(5)
-                        try:
-                            await notify_msg.delete()
-                        except discord.Forbidden:
-                            pass
+                        await self.autodel_msg(notify_msg)
                         return
 
                 if "matte" in reaction.emoji.name:
