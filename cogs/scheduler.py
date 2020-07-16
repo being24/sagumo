@@ -8,9 +8,10 @@ import os
 import re
 from datetime import datetime, timedelta
 
+import demoji
+import discord
 import mojimoji as mj
 from discord.ext import commands
-import discord
 
 
 def has_any_role():
@@ -28,12 +29,21 @@ class Scheduler(commands.Cog):
 
         self.json_name = self.master_path + "/data/scheduler.json"
 
+        self.emoji_in = '\N{THUMBS UP SIGN}'
+        self.emoji_go = '\N{NEGATIVE SQUARED CROSS MARK}'
+        self.emoji_ok = '\N{WHITE HEAVY CHECK MARK}'
+        self.emoji_x = '\N{CROSS MARK}'
+
+        self.num_emoji_list = [f'{i}\ufe0f\u20e3' for i in range(10)]
+
         if not os.path.isfile(self.json_name):
             self.schedule_dict = {}
             self.dump_json(self.schedule_dict)
 
         with open(self.json_name, encoding='utf-8') as f:
             self.schedule_dict = json.load(f)
+
+        demoji.download_codes()
 
     def dump_json(self, json_data):
         with open(self.json_name, "w") as f:
@@ -52,33 +62,35 @@ class Scheduler(commands.Cog):
         except discord.Forbidden:
             pass
 
-    @commands.command(aliases=['after'])
-    @has_any_role()
-    async def remind_after(self, ctx, text: str):
-        text = mj.zen_to_han(text)
+    async def remove_reaction_handler(self, ctx, msg, reaction, user):
+        try:
+            await msg.remove_reaction(reaction.emoji, user)
+        except discord.Forbidden:
+            await ctx.send('リアクションの除去に失敗しました.')
+        except discord.NotFound:
+            await ctx.send('リアクションが見つかりません.')
+        except discord.HTTPException:
+            await ctx.send('通信エラーです.')
 
-        print(re.findall(r'\d+', text))
-        print(re.findall(r'[a-zA-Z]', text))
-        print(datetime.now())
+    def return_reaction_to_num(self, reaction) -> int:
+        num = self.num_emoji_list.index(reaction)
+        return num
 
     @has_any_role()
     @commands.group(aliases=['reminder'], invoke_without_command=True)
     async def remind(self, ctx):
-        settime = 3
-        emoji_in = '\N{THUMBS UP SIGN}'
-        emoji_go = '\N{NEGATIVE SQUARED CROSS MARK}'
-        emoji_ok = '\N{WHITE HEAVY CHECK MARK}'
+        settime = 1
 
-        num_emoji_list = [f'{i}\ufe0f\u20e3' for i in range(10)]
-
-        init_reaction_list = [emoji_ok, ] + num_emoji_list
+        init_reaction_list = [
+            self.emoji_ok,
+            self.emoji_x] + self.num_emoji_list
 
         embed = discord.Embed(title="リマインダを設定します", colour=0x1e90ff)
         embed.add_field(
             name="対話形式でリマインダを設定します",
             value=f"無操作タイムアウトは{settime}分です\n少々お待ちください",
             inline=True)
-        embed.set_footer(text='少し待ってからリアクションをつけてください')
+        embed.set_footer(text='少々お待ちください')
 
         main_msg = await ctx.send(embed=embed)
 
@@ -93,15 +105,54 @@ class Scheduler(commands.Cog):
                 await self.autodel_msg(err_msg)
             await asyncio.sleep(0.2)
 
+        embed.clear_fields()
+        embed.add_field(
+            name="繰り返し回数を決定します",
+            value=f"ずっと繰り返す場合は{self.num_emoji_list[0]}を、それ以外の場合は該当の回数を押してください",
+            inline=True)
+        embed.set_footer(text='準備完了です')
+        await main_msg.edit(embed=embed)
+
         while True:
             try:
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=settime * 60)
             except asyncio.TimeoutError:
-                await main_msg.delete()
-                await ctx.send('タイムアウトしました')
+                embed = discord.Embed(title="タイムアウトしました", colour=0x1e90ff)
+                await main_msg.edit(embed=embed)
+                await main_msg.clear_reactions()
                 break
             else:
-                pass # ここから
+                if user.id != ctx.author.id:
+                    await self.remove_reaction_handler(ctx, main_msg, reaction, user)
+                    caution_msg = await ctx.send(f'{user.mention}:送信主のみが設定できます')
+                    await self.autodel_msg(caution_msg)
+                    continue
+
+                reaction_raw = demoji.findall(str(reaction))
+                for i in reaction_raw:
+                    reaction_raw = i
+
+                if reaction.emoji == self.emoji_x:
+                    embed = discord.Embed(title="キャンセルしました", colour=0x1e90ff)
+                    await main_msg.edit(embed=embed)
+                    await main_msg.clear_reactions()
+                    break
+
+                if reaction.emoji == self.num_emoji_list[0]:
+                    embed.clear_fields()
+                    embed.add_field(
+                        name="繰り返し回数を決定します",
+                        value=f"ずっと繰り返す場合は{self.num_emoji_list[0]}を、それ以外の場合は該当の回数を押してください",
+                        inline=True)
+                    embed.set_footer(text='準備完了です')
+
+                    num = self.return_reaction_to_num(reaction_raw)
+
+                    print(num)
+
+                await self.remove_reaction_handler(ctx, main_msg, reaction, user)
+
+                pass  # ここから
 
     @remind.error
     async def remind_error(self, ctx, error):
