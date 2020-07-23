@@ -14,7 +14,7 @@ import mojimoji as mj
 from discord.ext import commands
 
 
-def has_any_role():
+def has_some_role():
     async def predicate(ctx):
         if len(ctx.author.roles) > 1:
             return True
@@ -62,7 +62,7 @@ class Scheduler(commands.Cog):
         except discord.Forbidden:
             pass
 
-    async def remove_reaction_handler(self, ctx, msg, reaction, user):
+    async def reaction_remover(self, ctx, msg, reaction, user) -> None:
         try:
             await msg.remove_reaction(reaction.emoji, user)
         except discord.Forbidden:
@@ -76,7 +76,7 @@ class Scheduler(commands.Cog):
         num = self.num_emoji_list.index(reaction)
         return num
 
-    @has_any_role()
+    @has_some_role()
     @commands.group(aliases=['reminder'], invoke_without_command=True)
     async def remind(self, ctx):
         settime = 1
@@ -123,7 +123,7 @@ class Scheduler(commands.Cog):
                 break
             else:
                 if user.id != ctx.author.id:
-                    await self.remove_reaction_handler(ctx, main_msg, reaction, user)
+                    await self.reaction_remover(ctx, main_msg, reaction, user)
                     caution_msg = await ctx.send(f'{user.mention}:送信主のみが設定できます')
                     await self.autodel_msg(caution_msg)
                     continue
@@ -150,7 +150,7 @@ class Scheduler(commands.Cog):
 
                     print(num)
 
-                await self.remove_reaction_handler(ctx, main_msg, reaction, user)
+                await self.reaction_remover(ctx, main_msg, reaction, user)
 
                 pass  # ここから
 
@@ -163,7 +163,7 @@ class Scheduler(commands.Cog):
             raise
 
     @commands.command(aliases=['ls_mi'])
-    @has_any_role()
+    @has_some_role()
     async def list_reminder(self, ctx):
         if len(self.schedule_dict) == 0:
             await ctx.send("予定されたリマインダはありません")
