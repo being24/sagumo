@@ -13,7 +13,7 @@ import discord
 from discord.ext import commands
 
 
-def has_any_role():
+def has_some_role():
     async def predicate(ctx):
         if len(ctx.author.roles) > 1:
             return True
@@ -66,7 +66,7 @@ class reaction(commands.Cog):
             self.dump_json(self.reaction_dict)
 
     @commands.command(aliases=['cnt'])
-    @has_any_role()
+    @has_some_role()
     async def count(self, ctx, num: typing.Optional[int] = 0, *roles: discord.Role):
         if num == 0:
             await ctx.send("引数を正しく入力してください")
@@ -104,7 +104,7 @@ class reaction(commands.Cog):
             raise
 
     @commands.command(aliases=['ls_ac'])
-    @has_any_role()
+    @has_some_role()
     async def list_reaction(self, ctx):
         if len(self.reaction_dict) == 0:
             await ctx.send("集計中のリアクションはありません")
