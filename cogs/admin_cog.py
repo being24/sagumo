@@ -10,9 +10,8 @@ import discord
 from discord.ext import commands
 
 
-def is_double_owner():  # botのオーナーのみが実行できるコマンド
+def is_double_owner():
     async def predicate(ctx):
-        return ctx.guild and (ctx.bot.owner_id == ctx.author.id or ctx.author.id in ctx.bot.owner_ids)
         return ctx.guild and ctx.bot.is_owner(ctx.author)
     return commands.check(predicate)
 
@@ -53,7 +52,6 @@ class admin(commands.Cog):
         try:
             await self.bot.change_presence(activity=discord.Game(name=word))
             await ctx.send(f"ステータスを{word}に変更しました")
-            self.bot.status = word
         except BaseException:
             pass
 
