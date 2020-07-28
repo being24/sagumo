@@ -13,7 +13,7 @@ import discord
 from discord.ext import commands
 
 
-def has_any_role():
+def has_some_role():
     async def predicate(ctx):
         if len(ctx.author.roles) > 1:
             return True
@@ -46,6 +46,12 @@ class reaction(commands.Cog):
                     ',',
                     ': '))
 
+    async def autodel_msg(self, msg):
+        try:
+            await msg.delete(delay=5)
+        except discord.Forbidden:
+            pass
+
     async def judge_and_notice(self, msg_id):
         if self.reaction_dict[msg_id]["cnt"] <= self.reaction_dict[msg_id][
                 "reaction_sum"] and self.reaction_dict[msg_id]["matte"] == 0:
@@ -60,7 +66,7 @@ class reaction(commands.Cog):
             self.dump_json(self.reaction_dict)
 
     @commands.command(aliases=['cnt'])
-    @has_any_role()
+    @has_some_role()
     async def count(self, ctx, num: typing.Optional[int] = 0, *roles: discord.Role):
         if num == 0:
             await ctx.send("引数を正しく入力してください")
@@ -93,17 +99,13 @@ class reaction(commands.Cog):
     async def count_error(self, ctx, error):
         if isinstance(error, commands.BadArgument):
             notify_msg = await ctx.send(f'{ctx.author.mention}\n引数エラーです\n順番が間違っていませんか？')
-            await asyncio.sleep(5)
-            try:
-                await notify_msg.delete()
-            except discord.Forbidden:
-                pass
+            await self.autodel_msg(notify_msg)
         else:
             raise
 
-    @commands.command(aliases=['ls'])
-    @has_any_role()
-    async def list_data(self, ctx):
+    @commands.command(aliases=['ls_ac'])
+    @has_some_role()
+    async def list_reaction(self, ctx):
         if len(self.reaction_dict) == 0:
             await ctx.send("集計中のリアクションはありません")
         else:
@@ -171,11 +173,7 @@ class reaction(commands.Cog):
                         except discord.Forbidden:
                             await channel.send('リアクションの除去に失敗しました.')
                         notify_msg = await channel.send(f"{reaction.member.mention} 権限無しのリアクションは禁止です！")
-                        await asyncio.sleep(5)
-                        try:
-                            await notify_msg.delete()
-                        except discord.Forbidden:
-                            pass
+                        await self.autodel_msg(notify_msg)
                         return
 
                 if "matte" in reaction.emoji.name:

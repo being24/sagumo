@@ -136,3 +136,4 @@ dmypy.json
 token
 *.json
 !setting.json
+!pyrightconfig.json
