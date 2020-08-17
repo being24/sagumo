@@ -2,12 +2,10 @@
 # -*- coding: utf-8 -*-
 
 
-import asyncio
 import json
-import logging
 import os
 import typing
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import discord
 from discord.ext import commands
@@ -58,7 +56,21 @@ class reaction(commands.Cog):
             channel = self.bot.get_channel(
                 self.reaction_dict[msg_id]["channel"])
             mention = self.reaction_dict[msg_id]["author"]
-            await channel.send(f"{mention} : 規定数のリアクションがたまりました")
+            url = self.reaction_dict[msg_id]["url"]
+            roles = self.reaction_dict[msg_id]["role"]
+            roles = [channel.guild.get_role(i).name for i in roles]
+
+            if len(roles) == 0:
+                roles = 'None'
+            else:
+                roles = ''.join(roles)
+
+            embed = discord.Embed(title="規定数のリアクションがたまりました")
+            embed.add_field(name="終了した集計のリンク", value=f"{url}", inline=False)
+            embed.set_footer(text=f"対象の役職 : {roles}")
+
+            await channel.send(f"{mention}")
+            await channel.send(embed=embed)
 
             self.reaction_dict.pop(msg_id, None)
             self.dump_json(self.reaction_dict)
@@ -136,7 +148,7 @@ class reaction(commands.Cog):
             await ctx.send(embed=embed)
 
     @commands.command()
-    @commands.has_permissions(ban_members=True)
+    @commands.is_owner()
     async def clear_all(self, ctx):
         self.reaction_dict = {}
         self.dump_json(self.reaction_dict)
