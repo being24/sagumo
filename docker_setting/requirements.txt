@@ -4,7 +4,7 @@ attrs==19.3.0
 certifi==2020.6.20
 chardet==3.0.4
 colorama==0.4.3
-demoji==0.2.1
+demoji==0.3.0
 discord-sentry-reporting==2.0.4
 discord.py==1.4.1
 flake8==3.8.3
