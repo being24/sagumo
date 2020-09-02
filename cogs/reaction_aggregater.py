@@ -190,7 +190,7 @@ class reaction(commands.Cog):
                         except discord.Forbidden:
                             await channel.send('リアクションの除去に失敗しました.')
                         notify_msg = await channel.send(f"{reaction.member.mention} 権限無しのリアクションは禁止です！")
-                        await self.autodel_msg(notify_msg)
+                        # await self.autodel_msg(notify_msg)
                         return
 
                 if "matte" in reaction.emoji.name:
