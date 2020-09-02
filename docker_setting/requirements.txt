@@ -7,6 +7,7 @@ colorama==0.4.3
 demoji==0.3.0
 discord-sentry-reporting==2.0.4
 discord.py==1.4.1
+discosnow==0.0.4
 flake8==3.8.3
 future==0.18.2
 geoip2==4.0.2

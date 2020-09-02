@@ -2,13 +2,14 @@
 # -*- coding: utf-8 -*-
 
 
+import asyncio
 import json
 import os
 import typing
 from datetime import datetime
 
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 
 def has_some_role():
@@ -32,6 +33,9 @@ class reaction(commands.Cog):
 
         with open(self.json_name, encoding='utf-8') as f:
             self.reaction_dict = json.load(f)
+
+        if not self.bot.loop.is_running():
+            self.reaction_reminder.start()
 
     def dump_json(self, json_data):
         with open(self.json_name, "w") as f:
@@ -104,7 +108,8 @@ class reaction(commands.Cog):
             "matte": 0,
             "time": now,
             "url": ctx.message.jump_url,
-            "role": [i.id for i in roles]}
+            "role": [i.id for i in roles],
+            "reminded": 0}
         self.dump_json(self.reaction_dict)
 
     @count.error
@@ -113,7 +118,7 @@ class reaction(commands.Cog):
             notify_msg = await ctx.send(f'{ctx.author.mention}\n引数エラーです\n順番が間違っていませんか？')
             await self.autodel_msg(notify_msg)
         else:
-            raise
+            raise ValueError
 
     @commands.command(aliases=['ls_ac'])
     @has_some_role()
@@ -185,7 +190,7 @@ class reaction(commands.Cog):
                         except discord.Forbidden:
                             await channel.send('リアクションの除去に失敗しました.')
                         notify_msg = await channel.send(f"{reaction.member.mention} 権限無しのリアクションは禁止です！")
-                        await self.autodel_msg(notify_msg)
+                        # await self.autodel_msg(notify_msg)
                         return
 
                 if "matte" in reaction.emoji.name:
@@ -213,6 +218,66 @@ class reaction(commands.Cog):
                     self.reaction_dict[msg_id]["reaction_sum"] -= 1
 
                 await self.judge_and_notice(msg_id)
+
+    async def remind(self, msg_id, elapsed_time) -> None:
+        if self.reaction_dict[msg_id]["matte"] > 0:
+            return
+
+        try:
+            reminded = self.reaction_dict[msg_id]["reminded"]
+        except KeyError:
+            reminded = 0
+
+        if reminded > 0:
+            return
+
+        channel = self.bot.get_channel(
+            self.reaction_dict[msg_id]["channel"])
+        url = self.reaction_dict[msg_id]["url"]
+        roles = self.reaction_dict[msg_id]["role"]
+
+        if len(roles) == 0:
+            roles_mention = 'None'
+            roles_name = 'None'
+        else:
+            roles_mention = [channel.guild.get_role(i).mention for i in roles]
+            roles_mention = ' '.join(roles_mention)
+
+            roles_name = [channel.guild.get_role(i).name for i in roles]
+            roles_name = ' '.join(roles_name)
+
+        auth = self.reaction_dict[msg_id]["author"]
+        reaction_sum = self.reaction_dict[msg_id]["reaction_sum"]
+        reaction_cnt = self.reaction_dict[msg_id]["cnt"]
+
+        embed = discord.Embed(title="上記、リマインドします")
+        embed.add_field(
+            name="詳細",
+            value=f"ID : {msg_id} by : {auth} 経過時間 : {elapsed_time} progress : {reaction_sum}/{reaction_cnt}\n{url}",
+            inline=False)
+        embed.set_footer(text=f"対象の役職 : {roles_name} ID : {msg_id}")
+
+        await channel.send(f"{roles_mention}")
+        await channel.send(embed=embed)
+
+        self.reaction_dict[msg_id]['reminded'] = 1
+        self.dump_json(self.reaction_dict)
+
+    @tasks.loop(seconds=10.0)
+    async def reaction_reminder(self) -> None:
+        await self.bot.wait_until_ready()
+
+        today = datetime.today()
+        now_M = today.strftime('%M')
+
+        if now_M == '00':
+            for i in self.reaction_dict.keys():
+                start_time = datetime.strptime(self.reaction_dict[i]['time'], '%Y-%m-%d %H:%M:%S')
+                elapsed_time = today - start_time
+                if elapsed_time.days >= 3:
+                    await self.remind(i, elapsed_time)
+
+                await asyncio.sleep(0.3)
 
 
 def setup(bot):
