@@ -63,6 +63,7 @@ class reaction(commands.Cog):
             url = self.reaction_dict[msg_id]["url"]
             roles = self.reaction_dict[msg_id]["role"]
             roles = [channel.guild.get_role(i).name for i in roles]
+            roles = ' '.join(roles)
 
             if len(roles) == 0:
                 roles = 'None'
