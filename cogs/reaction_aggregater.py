@@ -8,8 +8,11 @@ import os
 import typing
 from datetime import datetime
 
+import aiosqlite
 import discord
 from discord.ext import commands, tasks
+
+from .utils.sqlite_util import aio_sqlite
 
 
 def has_some_role():
@@ -36,6 +39,24 @@ class reaction(commands.Cog):
 
         if not self.bot.loop.is_running():
             self.reaction_reminder.start()
+
+        self.aiodb = aio_sqlite()
+
+        self.insert_sql = 'insert into reactions (id , guild, channel , cnt  , reaction_sum, matte, author , timestamp , role ) values (?,?,?,?,?,?,?,?,?)'
+        self.reaction = (748527250026135633,
+                         648154266548174849,
+                         748486535967408228,
+                         3,
+                         1,
+                         0,
+                         "<@539464982304391179>",
+                         "2020-08-27 22:03:03",
+                         [643110729213411329,
+                          643110729213411329])
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        await self.aiodb.create_db_reaction()
 
     def dump_json(self, json_data):
         with open(self.json_name, "w") as f:
@@ -82,8 +103,17 @@ class reaction(commands.Cog):
         else:
             self.dump_json(self.reaction_dict)
 
+    @commands.command()
+    async def test(self, ctx):
+        db = await aiosqlite.connect(f'{self.master_path}/data/example.sqlite3')
+        c = await db.cursor()
+        await c.execute(self.insert_sql, self.reaction)
+        await db.commit()
+        await db.close()
+
     @commands.command(aliases=['cnt'])
     @has_some_role()
+    # これを、roleだけじゃなくて個人でもよくする
     async def count(self, ctx, num: typing.Optional[int] = 0, *roles: discord.Role):
         if num == 0:
             await ctx.send("引数を正しく入力してください")
@@ -273,7 +303,8 @@ class reaction(commands.Cog):
 
         if now_M == '00':
             for i in self.reaction_dict.keys():
-                start_time = datetime.strptime(self.reaction_dict[i]['time'], '%Y-%m-%d %H:%M:%S')
+                start_time = datetime.strptime(
+                    self.reaction_dict[i]['time'], '%Y-%m-%d %H:%M:%S')
                 elapsed_time = today - start_time
                 if elapsed_time.days >= 3:
                     await self.remind(i, elapsed_time)
