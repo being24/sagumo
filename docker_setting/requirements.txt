@@ -20,7 +20,7 @@ mojimoji==0.0.11
 multidict==4.7.6
 pycodestyle==2.6.0
 pyflakes==2.2.0
-Pygments==2.7.0
+Pygments==2.7.1
 python-dateutil==2.8.1
 python-dotenv==0.14.0
 pytz==2020.1
