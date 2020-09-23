@@ -13,7 +13,7 @@ future==0.18.2
 geoip2==4.0.2
 idna==2.10
 idna-ssl==1.1.0
-importlib-metadata==1.7.0
+importlib-metadata==2.0.0
 maxminddb==2.0.2
 mccabe==0.6.1
 mojimoji==0.0.11
