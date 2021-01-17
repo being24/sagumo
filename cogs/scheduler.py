@@ -10,7 +10,6 @@ from datetime import datetime, timedelta
 
 import demoji
 import discord
-import mojimoji as mj
 from discord.ext import commands
 
 
