@@ -1,11 +1,12 @@
 # !/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import discord
 import json
 import logging
 import os
 import traceback
+
+import discord
 from discord.ext import commands
 from discord_sentry_reporting import use_sentry
 from dotenv import load_dotenv
@@ -33,6 +34,7 @@ class MyBot(commands.Bot):
         print(self.user.name)
         print(self.user.id)
         print('------')
+        print('db ready')
         logging.warning('rebooted')
         await bot.change_presence(activity=discord.Game(name='リアクション集計中'))
 
