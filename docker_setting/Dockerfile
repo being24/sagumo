@@ -10,7 +10,7 @@ RUN set -x && \
     apk add --no-cache build-base nano git tzdata ncdu && \
     cp /usr/share/zoneinfo/Asia/Tokyo /etc/localtime && \
     python3 -m pip install -U setuptools && \
-    https://github.com/being24/sagumo.git && \
+    git clone https://github.com/being24/sagumo.git && \
     python3 -m pip install -r ./sagumo/docker_setting/requirements.txt && \
     chmod 0700 ./sagumo/*.sh && \
     chmod 0700 ./sagumo/bot.py && \
