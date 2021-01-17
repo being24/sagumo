@@ -1,4 +1,4 @@
-FROM python:3.8.5-buster
+FROM python:3.8-alpine
 
 WORKDIR /opt/
 
@@ -7,16 +7,15 @@ ENV TZ='Asia/Tokyo'
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN set -x && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends python3-pip nano git tzdata&& \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
+    apk add --no-cache build-base nano git tzdata ncdu && \
     cp /usr/share/zoneinfo/Asia/Tokyo /etc/localtime && \
-    pip3 install -U setuptools && \
-    git clone https://github.com/being24/sagumo.git && \
-    pip3 install -r ./sagumo/docker_setting/requirements.txt && \
+    python3 -m pip install -U setuptools && \
+    https://github.com/being24/sagumo.git && \
+    python3 -m pip install -r ./sagumo/docker_setting/requirements.txt && \
     chmod 0700 ./sagumo/*.sh && \
     chmod 0700 ./sagumo/bot.py && \
-    echo "Hello, sagumo ready!"
+    apk del build-base  && \
+    rm -rf /var/cache/apk/*  && \
+    echo "Hello, sagumo ready!" 
 
 CMD ["/opt/sagumo/bot.sh"]

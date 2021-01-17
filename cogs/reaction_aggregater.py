@@ -5,14 +5,15 @@
 import asyncio
 import json
 import os
+import pathlib
 import typing
 from datetime import datetime
 
-import aiosqlite
 import discord
 from discord.ext import commands, tasks
 
-from .utils.sqlite_util import aio_sqlite
+from .utils.setting_manager import SettingManager
+from .utils.reaction_aggregation_manager import AggregationManager
 
 
 def has_some_role():
@@ -25,55 +26,26 @@ def has_some_role():
 class reaction(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.master_path = os.path.dirname(
-            os.path.dirname(os.path.abspath(__file__)))
 
-        self.json_name = self.master_path + "/data/reaction.json"
-
-        if not os.path.isfile(self.json_name):
-            self.reaction_dict = {}
-            self.dump_json(self.reaction_dict)
-
-        with open(self.json_name, encoding='utf-8') as f:
-            self.reaction_dict = json.load(f)
+        self.setting_mng = SettingManager()
+        self.aggrega_mng = AggregationManager()
 
         if not self.bot.loop.is_running():
             self.reaction_reminder.start()
 
-        self.aiodb = aio_sqlite()
-
-        self.insert_sql = 'insert into reactions (id , guild, channel , cnt  , reaction_sum, matte, author , timestamp , role ) values (?,?,?,?,?,?,?,?,?)'
-        self.reaction = (748527250026135633,
-                         648154266548174849,
-                         748486535967408228,
-                         3,
-                         1,
-                         0,
-                         "<@539464982304391179>",
-                         "2020-08-27 22:03:03",
-                         [643110729213411329,
-                          643110729213411329])
+    @staticmethod
+    async def autodel_msg(msg, second: int = 5):
+        try:
+            await msg.delete(delay=second)
+        except discord.Forbidden:
+            pass
 
     @commands.Cog.listener()
     async def on_ready(self):
-        await self.aiodb.create_db_reaction()
+        await self.aggrega_mng.create_table()
+        await self.setting_mng.create_table()
 
-    def dump_json(self, json_data):
-        with open(self.json_name, "w") as f:
-            json.dump(
-                json_data,
-                f,
-                ensure_ascii=False,
-                indent=4,
-                separators=(
-                    ',',
-                    ': '))
-
-    async def autodel_msg(self, msg):
-        try:
-            await msg.delete(delay=5)
-        except discord.Forbidden:
-            pass
+        self.setting = await self.setting_mng.get_setting()
 
     async def judge_and_notice(self, msg_id):
         if self.reaction_dict[msg_id]["cnt"] <= self.reaction_dict[msg_id][
@@ -89,7 +61,7 @@ class reaction(commands.Cog):
             if len(roles) == 0:
                 roles = 'None'
             else:
-                roles = ''.join(roles)
+                roles = ' '.join(roles)
 
             embed = discord.Embed(title="規定数のリアクションがたまりました")
             embed.add_field(name="終了した集計のリンク", value=f"{url}", inline=False)
@@ -119,18 +91,27 @@ class reaction(commands.Cog):
             await ctx.send("引数を正しく入力してください")
             return
 
-        first_msg = f"{ctx.author.mention}\nリアクション集計を行います: 目標リアクション数 : **{num}**"
-
-        if len(roles) > 0:
-            mid_msg = f"指定された役職 : {' '.join([i.name for i in roles])}\n"
-        else:
-            mid_msg = ""
-
-        last_msg = "本メッセージにリアクションをつけてください"
-
-        msg = await ctx.send(f"{first_msg}\n{mid_msg}{last_msg}")
         today = datetime.today()
         now = today.strftime('%Y-%m-%d %H:%M:%S')
+
+        if len(roles) == 0:
+            insert_roles = []
+        else:
+            insert_roles = [i.id for i in roles]
+        #  (id , guild, channel , cnt  , reaction_sum, matte, author , timestamp , role )
+        data = (
+            ctx.message.id,
+            ctx.guild.id,
+            ctx.message.channel.id,
+            num,
+            0,
+            0,
+            ctx.author.mention,
+            now,
+            insert_roles)
+
+        await self.aiodb.db_write(self.insert_sql, data)
+        '''
         self.reaction_dict[str(msg.id)] = {
             "cnt": num,
             "author": ctx.author.mention,
@@ -142,17 +123,30 @@ class reaction(commands.Cog):
             "role": [i.id for i in roles],
             "reminded": 0}
         self.dump_json(self.reaction_dict)
+        '''
 
-    @count.error
+        first_msg = f"{ctx.author.mention}\nリアクション集計を行います: 目標リアクション数 : **{num}**"
+
+        if len(roles) > 0:
+            mid_msg = f"指定された役職 : {' '.join([i.name for i in roles])}\n"
+        else:
+            mid_msg = ""
+
+        last_msg = "本メッセージにリアクションをつけてください"
+
+        await ctx.send(f"{first_msg}\n{mid_msg}{last_msg}")
+
+    @ count.error
     async def count_error(self, ctx, error):
+        print(error)
         if isinstance(error, commands.BadArgument):
             notify_msg = await ctx.send(f'{ctx.author.mention}\n引数エラーです\n順番が間違っていませんか？')
             await self.autodel_msg(notify_msg)
         else:
             raise ValueError
 
-    @commands.command(aliases=['ls_ac'])
-    @has_some_role()
+    @ commands.command(aliases=['ls_ac'])
+    @ has_some_role()
     async def list_reaction(self, ctx):
         if len(self.reaction_dict) == 0:
             await ctx.send("集計中のリアクションはありません")
@@ -183,15 +177,15 @@ class reaction(commands.Cog):
             embed.set_footer(text="あんまり貯めないでね")
             await ctx.send(embed=embed)
 
-    @commands.command()
-    @commands.is_owner()
+    @ commands.command()
+    @ commands.is_owner()
     async def clear_all(self, ctx):
         self.reaction_dict = {}
         self.dump_json(self.reaction_dict)
-        await ctx.send("全てのjsonデータを削除しました")
+        await ctx.send("全てのデータを削除しました")
 
-    @commands.command(aliases=['rm'])
-    @commands.has_permissions(ban_members=True)
+    @ commands.command(aliases=['rm'])
+    @ commands.has_permissions(ban_members=True)
     async def remove(self, ctx, num: typing.Optional[str]):
         try:
             aggregate_id = num.replace(" ", "")
@@ -202,8 +196,9 @@ class reaction(commands.Cog):
         except KeyError:
             await ctx.send("キーが存在しません")
 
-    @commands.Cog.listener()
+    @ commands.Cog.listener()
     async def on_raw_reaction_add(self, reaction):
+        # await
         for msg_id in list(self.reaction_dict):
             if int(msg_id) == reaction.message_id:
                 channel = self.bot.get_channel(reaction.channel_id)
@@ -233,7 +228,7 @@ class reaction(commands.Cog):
 
                 await self.judge_and_notice(msg_id)
 
-    @commands.Cog.listener()
+    @ commands.Cog.listener()
     async def on_raw_reaction_remove(self, reaction):
         remove_usr = self.bot.get_user(reaction.user_id)
         if remove_usr.bot:
@@ -294,7 +289,7 @@ class reaction(commands.Cog):
         self.reaction_dict[msg_id]['reminded'] = 1
         self.dump_json(self.reaction_dict)
 
-    @tasks.loop(seconds=10.0)
+    @ tasks.loop(seconds=10.0)
     async def reaction_reminder(self) -> None:
         await self.bot.wait_until_ready()
 
