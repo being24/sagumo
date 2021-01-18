@@ -16,7 +16,7 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 
 class MyBot(commands.Bot):
     def __init__(self, command_prefix):
-        super().__init__(command_prefix, help_command=None)
+        super().__init__(command_prefix, help_command=None, intents=intents)
 
         for cog in os.listdir(currentpath + "/cogs"):
             if cog.endswith(".py"):
@@ -24,9 +24,6 @@ class MyBot(commands.Bot):
                     self.load_extension(f'cogs.{cog[:-3]}')
                 except Exception:
                     traceback.print_exc()
-
-        with open(currentpath + "/data/setting.json", encoding='utf-8') as f:
-            self.json_data = json.load(f)
 
     async def on_ready(self):
         print('-----')
@@ -62,6 +59,10 @@ if __name__ == '__main__':
     )
 
     currentpath = os.path.dirname(os.path.abspath(__file__))
+
+    intents = discord.Intents.default()
+    intents.members = True
+    intents.typing = False
 
     bot = MyBot(command_prefix=commands.when_mentioned_or('/'))
 
