@@ -18,6 +18,21 @@ from sqlalchemy.types import VARCHAR, BigInteger, Integer, String
 Base = declarative_base()
 
 
+@dataclass
+class ReactionParameter:
+    msg_id: int
+    guild_id: int
+    channel_id: int
+    target_value: int
+    sum: int
+    matte: bool
+    author_id: int
+    created_at: datetime
+    notified_at: datetime
+    remind: bool
+    pinged_id: str
+
+
 class ReactionAggregation(Base):
     __tablename__ = 'reactionaggregation'
 
