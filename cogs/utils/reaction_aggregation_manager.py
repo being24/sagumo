@@ -36,19 +36,17 @@ class ReactionParameter:
 class ReactionAggregation(Base):
     __tablename__ = 'reactionaggregation'
 
-    msg_id = Column(BigInteger, primary_key=True) # メッセージID
-    guild_id = Column(BigInteger, default=0) # ギルドID
-    channel_id = Column(BigInteger, default=0) # チャンネルID
-    target_value = Column(Integer, default=0) # 目標値
-    sum = Column(Integer, default=0) # 現在の合計値
-    matte = Column(BOOLEAN, default=False) # 待ってが付いてるかどうか
-    author_id = Column(BigInteger, default=0) # 集めてる人のID
-    created_at = Column(DATETIME, default=0) # 集計開始時間
-    notified_at = Column(DATETIME, default=0) # 集計完了時間
-    remind_at = Column(BOOLEAN, default=False) # リマインドしたかどうか？
-    pinged_id = Column(VARCHAR, default='') # メンション先のID
-
-    # メモ：dataclassにで扱うべし
+    msg_id = Column(BigInteger, primary_key=True)  # メッセージID
+    guild_id = Column(BigInteger, default=0)  # ギルドID
+    channel_id = Column(BigInteger, default=0)  # チャンネルID
+    target_value = Column(Integer, default=0)  # 目標値
+    sum = Column(Integer, default=0)  # 現在の合計値
+    matte = Column(BOOLEAN, default=False)  # 待ってが付いてるかどうか
+    author_id = Column(BigInteger, default=0)  # 集めてる人のID
+    created_at = Column(DATETIME, default=0)  # 集計開始時間
+    notified_at = Column(DATETIME, default=0)  # 集計完了時間
+    remind = Column(BOOLEAN, default=False)  # リマインドしたかどうか？
+    pinged_id = Column(VARCHAR, default='')  # メンション先のID
 
 
 class AggregationManager():
