@@ -176,7 +176,7 @@ class reaction(commands.Cog):
         else:
             raise ValueError
 
-    @ commands.command(aliases=['ls_ac'])
+    @ commands.command(aliases=['lsre'])
     @ has_some_role()
     async def list_reaction(self, ctx):
         if len(self.reaction_dict) == 0:
