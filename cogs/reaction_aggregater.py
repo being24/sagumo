@@ -153,31 +153,8 @@ class reaction(commands.Cog):
         else:
             insert_roles = [i.id for i in roles]
         #  (id , guild, channel , cnt  , reaction_sum, matte, author , timestamp , role )
-        data = (
-            ctx.message.id,
-            ctx.guild.id,
-            ctx.message.channel.id,
-            num,
-            0,
-            0,
-            ctx.author.mention,
-            now,
-            insert_roles)
 
-        await self.aiodb.db_write(self.insert_sql, data)
-        '''
-        self.reaction_dict[str(msg.id)] = {
-            "cnt": num,
-            "author": ctx.author.mention,
-            "reaction_sum": 0,
-            "channel": ctx.channel.id,
-            "matte": 0,
-            "time": now,
-            "url": ctx.message.jump_url,
-            "role": [i.id for i in roles],
-            "reminded": 0}
-        self.dump_json(self.reaction_dict)
-        '''
+        # 書き込み処理
 
         first_msg = f"{ctx.author.mention}\nリアクション集計を行います: 目標リアクション数 : **{num}**"
 
