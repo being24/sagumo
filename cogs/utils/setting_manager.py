@@ -61,7 +61,14 @@ class SettingManager():
                 new_setting = GuildSettingDB(index=True)
                 session.add(new_setting)
 
-    async def register_guild(self, guild_id, bot_manager_id, bot_user_id):
+    async def register_guild(self, guild_id: int, bot_manager_id: int, bot_user_id: int) -> None:
+        """ギルドの設定を登録する関数
+
+        Args:
+            guild_id (int): サーバーID
+            bot_manager_id (int): BOT管理者役職のID
+            bot_user_id (int): BOT使用者役職のID
+        """
         async with AsyncSession(self.engine) as session:
             async with session.begin():
                 new_guild = GuildSettingDB(
@@ -71,10 +78,15 @@ class SettingManager():
 
                 session.add(new_guild)
 
-    async def get_guild(self, guild_id:int):
-        '''
-        ギルドの設定をdataclassで返す
-        '''
+    async def get_guild(self, guild_id: int) -> Union[GuildSetting, None]:
+        """ギルドの情報をGuildSettingで返す関数
+
+        Args:
+            guild_id (int): サーバーID
+
+        Returns:
+            GuildSetting: サーバの設定のデータクラス
+        """
         async with AsyncSession(self.engine, expire_on_commit=True) as session:
             async with session.begin():
                 stmt = select(GuildSettingDB).where(
