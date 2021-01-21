@@ -115,13 +115,27 @@ class reaction(commands.Cog):
         else:
             self.dump_json(self.reaction_dict)
 
-    @commands.command()
-    async def test(self, ctx):
-        db = await aiosqlite.connect(f'{self.master_path}/data/example.sqlite3')
-        c = await db.cursor()
-        await c.execute(self.insert_sql, self.reaction)
-        await db.commit()
-        await db.close()
+    @commands.command(aliases=['s_init'])
+    async def sagumo_initialization(self, ctx, bot_manager: discord.Role, bot_user: discord.Role):
+        """ギルドごとの管理者、使用者役職を登録するコマンド
+
+        Args:
+            ctx (): いつもの
+            bot_manager (discord.Role): bot管理者役職
+            bot_user (discord.Role): bot使用者役職
+        """
+        if await self.setting_mng.is_exist(ctx.guild.id):
+            await self.setting_mng.update_guild(
+                guild_id=ctx.guild.id,
+                bot_manager_id=bot_manager.id,
+                bot_user_id=bot_user.id)
+            await ctx.send(f'{ctx.guild}のbot管理者に{bot_manager.mention}を、bot操作者に{bot_user.mention}に更新しました')
+        else:
+            await self.setting_mng.register_guild(
+                guild_id=ctx.guild.id,
+                bot_manager_id=bot_manager.id,
+                bot_user_id=bot_user.id)
+            await ctx.send(f'{ctx.guild}のbot管理者に{bot_manager.mention}を、bot操作者に{bot_user.mention}を設定しました')
 
     @commands.command(aliases=['cnt'])
     @has_some_role()
