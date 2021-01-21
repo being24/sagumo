@@ -34,7 +34,13 @@ class reaction(commands.Cog):
             self.reaction_reminder.start()
 
     @staticmethod
-    async def autodel_msg(msg, second: int = 5):
+    async def autodel_msg(msg: discord.Message, second: int = 5):
+        """渡されたメッセージを指定秒数後に削除する関数
+
+        Args:
+            msg (discord.Message): 削除するメッセージオブジェクト
+            second (int, optional): 秒数. Defaults to 5.
+        """
         try:
             await msg.delete(delay=second)
         except discord.Forbidden:
