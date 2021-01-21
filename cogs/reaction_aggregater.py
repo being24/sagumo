@@ -46,6 +46,38 @@ class reaction(commands.Cog):
         except discord.Forbidden:
             pass
 
+    async def is_bot_user(self, guild_id: int, role_id_list: list) -> bool:
+        """そのサーバーのBOT_user役職を持っているか判定する関数
+
+        Args:
+            guild_id (int): サーバーのID
+            role_id (list): そのユーザの持つIDのリスト
+
+        Returns:
+            bool: 入ってたらTrue、入ってなかったらFalse
+        """
+        guild = await self.setting_mng.get_guild(guild_id)
+        if guild.bot_user_id in role_id_list:
+            return True
+        else:
+            return False
+
+    async def is_bot_manager(self, guild_id: int, role_id_list: list) -> bool:
+        """そのサーバーのBOT_manager役職を持っているか判定する関数
+
+        Args:
+            guild_id (int): サーバーのID
+            role_id_list (list): そのユーザの持つIDのリスト
+
+        Returns:
+            bool: 入ってたらTrue、入ってなかったらFalse
+        """
+        guild = await self.setting_mng.get_guild(guild_id)
+        if guild.bot_manager_id in role_id_list:
+            return True
+        else:
+            return False
+
     @commands.Cog.listener()
     async def on_ready(self):
         await self.aggrega_mng.create_table()
