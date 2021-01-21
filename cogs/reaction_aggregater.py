@@ -80,7 +80,9 @@ class reaction(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        await self.aggrega_mng.create_table()
+        """on_ready時に発火する関数
+        """
+        await self.aggregation_mng.create_table()
         await self.setting_mng.create_table()
 
         self.setting = await self.setting_mng.get_setting()
