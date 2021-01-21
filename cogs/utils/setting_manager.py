@@ -45,7 +45,9 @@ class SettingManager():
         self.engine = create_async_engine(
             f'sqlite:///{db_path}', echo=True)
 
-    async def create_table(self):
+    async def create_table(self) -> None:
+        """テーブルを作成する関数
+        """
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
             try:
