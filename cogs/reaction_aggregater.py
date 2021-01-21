@@ -28,7 +28,7 @@ class reaction(commands.Cog):
         self.bot = bot
 
         self.setting_mng = SettingManager()
-        self.aggrega_mng = AggregationManager()
+        self.aggregation_mng = AggregationManager()
 
         if not self.bot.loop.is_running():
             self.reaction_reminder.start()
