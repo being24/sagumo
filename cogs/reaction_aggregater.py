@@ -3,18 +3,18 @@
 
 
 import asyncio
-import json
-import os
-import pathlib
 import typing
 from datetime import datetime
 
 import discord
 from discord.ext import commands, tasks
 
-from .utils.setting_manager import SettingManager
 from .utils.reaction_aggregation_manager import AggregationManager
+from .utils.setting_manager import SettingManager
 
+# https://starnak.hatenablog.com/entry/2018/07/28/230500
+# has_roleだと動的にできないから、デコレータじゃなくてそういう関数を書く必要がある
+# guild_idとroles渡して管理or利用か？を確認する
 
 def has_some_role():
     async def predicate(ctx):
