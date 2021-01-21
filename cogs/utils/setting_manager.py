@@ -78,6 +78,42 @@ class SettingManager():
 
                 session.add(new_guild)
 
+    async def update_guild(self, guild_id: int, bot_manager_id: int, bot_user_id: int) -> None:
+        """ギルドの設定を更新する関数
+
+        Args:
+            guild_id (int): サーバーID
+            bot_manager_id (int): bot管理者のID
+            bot_user_id (int): bot操作者のID
+        """
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                stmt = update(GuildSettingDB).where(
+                    GuildSettingDB.guild_id == guild_id).values(
+                    bot_manager_id=bot_manager_id,
+                    bot_user_id=bot_user_id)
+                await session.execute(stmt)
+
+    async def is_exist(self, guild_id: int) -> bool:
+        """主キーであるギルドIDが存在するかを判定する関数
+
+        Args:
+            guild_id (int): サーバーID
+
+        Returns:
+            bool: あったらTrue、なかったらFalse
+        """
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                stmt = select(GuildSettingDB).where(
+                    GuildSettingDB.guild_id == guild_id)
+                result = await session.execute(stmt)
+                result = result.fetchone()
+                if result is not None:
+                    return True
+                else:
+                    return False
+
     async def get_guild(self, guild_id: int) -> Union[GuildSetting, None]:
         """ギルドの情報をGuildSettingで返す関数
 
