@@ -31,7 +31,6 @@ class MyBot(commands.Bot):
         print(self.user.name)
         print(self.user.id)
         print('------')
-        print('db ready')
         logging.warning('rebooted')
         await bot.change_presence(activity=discord.Game(name='リアクション集計中'))
 
