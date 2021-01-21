@@ -16,6 +16,7 @@ from .utils.setting_manager import SettingManager
 # has_roleだと動的にできないから、デコレータじゃなくてそういう関数を書く必要がある
 # guild_idとroles渡して管理or利用か？を確認する
 
+
 def has_some_role():
     async def predicate(ctx):
         if len(ctx.author.roles) > 1:
@@ -85,8 +86,6 @@ class reaction(commands.Cog):
         await self.aggregation_mng.create_table()
         await self.setting_mng.create_table()
 
-        self.setting = await self.setting_mng.get_setting()
-
     async def judge_and_notice(self, msg_id):
         if self.reaction_dict[msg_id]["cnt"] <= self.reaction_dict[msg_id][
                 "reaction_sum"] and self.reaction_dict[msg_id]["matte"] == 0:
@@ -111,9 +110,10 @@ class reaction(commands.Cog):
             await channel.send(embed=embed)
 
             self.reaction_dict.pop(msg_id, None)
-            self.dump_json(self.reaction_dict)
+            # self.dump_json(self.reaction_dict)
         else:
-            self.dump_json(self.reaction_dict)
+            # self.dump_json(self.reaction_dict)
+            pass
 
     @commands.command(aliases=['s_init'])
     async def sagumo_initialization(self, ctx, bot_manager: discord.Role, bot_user: discord.Role):
@@ -212,7 +212,7 @@ class reaction(commands.Cog):
     @ commands.is_owner()
     async def clear_all(self, ctx):
         self.reaction_dict = {}
-        self.dump_json(self.reaction_dict)
+        # self.dump_json(self.reaction_dict)
         await ctx.send("全てのデータを削除しました")
 
     @ commands.command(aliases=['rm'])
@@ -222,7 +222,7 @@ class reaction(commands.Cog):
             aggregate_id = num.replace(" ", "")
             url = self.reaction_dict[aggregate_id]["url"]
             del self.reaction_dict[aggregate_id]
-            self.dump_json(self.reaction_dict)
+            # self.dump_json(self.reaction_dict)
             await ctx.send(f"1件削除しました\n{url}")
         except KeyError:
             await ctx.send("キーが存在しません")
@@ -318,7 +318,7 @@ class reaction(commands.Cog):
         await channel.send(embed=embed)
 
         self.reaction_dict[msg_id]['reminded'] = 1
-        self.dump_json(self.reaction_dict)
+        # self.dump_json(self.reaction_dict)
 
     @ tasks.loop(seconds=10.0)
     async def reaction_reminder(self) -> None:
