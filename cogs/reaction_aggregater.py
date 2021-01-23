@@ -128,7 +128,7 @@ class reaction(commands.Cog):
         """ギルドごとの管理者、使用者役職を登録するコマンド
 
         Args:
-            ctx (): いつもの
+            ctx (discord.ext.commands.context.Context): いつもの
             bot_manager (discord.Role): bot管理者役職
             bot_user (discord.Role): bot使用者役職
         """
