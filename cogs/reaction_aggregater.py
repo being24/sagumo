@@ -147,6 +147,7 @@ class reaction(commands.Cog):
 
     @commands.command(aliases=['cnt'])
     @has_some_role()
+    async def count(self, ctx, target_value: int = 0, *role_or_member: typing.Union[discord.Role, discord.Member]):
         """リアクション集計を行うbot
 
         Args:
@@ -158,30 +159,30 @@ class reaction(commands.Cog):
         """
         if not await self.is_bot_user(ctx.guild, ctx.author):
             raise commands.CheckFailure
+
+        if target_value == 0:
             await ctx.send("引数を正しく入力してください")
             return
 
-        today = datetime.today()
-        now = today.strftime('%Y-%m-%d %H:%M:%S')
-
-        if len(roles) == 0:
-            insert_roles = []
+        if len(role_or_member) == 0:
+            insert_roles_id = []
         else:
-            insert_roles = [i.id for i in roles]
-        #  (id , guild, channel , cnt  , reaction_sum, matte, author , timestamp , role )
+            insert_roles_id = [i.id for i in role_or_member]
 
-        # 書き込み処理
+        first_msg = f"{ctx.author.mention}\nリアクション集計を行います: 目標リアクション数 : **{target_value}**"
 
-        first_msg = f"{ctx.author.mention}\nリアクション集計を行います: 目標リアクション数 : **{num}**"
-
-        if len(roles) > 0:
-            mid_msg = f"指定された役職 : {' '.join([i.name for i in roles])}\n"
+        if len(insert_roles_id) > 0:
+            mid_msg = f"指定された役職/ユーザー : {' '.join([i.name for i in role_or_member])}\n"
         else:
             mid_msg = ""
 
+        insert_roles_str = ','.join([str(id) for id in insert_roles_id])
+
         last_msg = "本メッセージにリアクションをつけてください"
 
-        await ctx.send(f"{first_msg}\n{mid_msg}{last_msg}")
+        msg = await ctx.send(f"{first_msg}\n{mid_msg}{last_msg}")
+
+        now = datetime.now()
 
     @ count.error
     async def count_error(self, ctx, error):
