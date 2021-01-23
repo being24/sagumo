@@ -47,34 +47,42 @@ class reaction(commands.Cog):
         except discord.Forbidden:
             pass
 
-    async def is_bot_user(self, guild_id: int, role_id_list: list) -> bool:
+    async def is_bot_user(self, guild: discord.Guild, command_user: discord.Member) -> bool:
         """そのサーバーのBOT_user役職を持っているか判定する関数
 
         Args:
-            guild_id (int): サーバーのID
-            role_id (list): そのユーザの持つIDのリスト
+            guild (discord.Guild): サーバーのギルドオブジェクト
+            command_user (discord.Member): コマンド使用者のメンバーオブジェクト
 
         Returns:
             bool: 入ってたらTrue、入ってなかったらFalse
+
+        Memo:
+            管理者は使用者の権限も持つことにする
         """
-        guild = await self.setting_mng.get_guild(guild_id)
-        if guild.bot_user_id in role_id_list:
+        guild_DB = await self.setting_mng.get_guild(guild.id)
+        bot_user_role = guild.get_role(guild_DB.bot_user_id)
+        bot_manager_role = guild.get_role(guild_DB.bot_manager_id)
+
+        if any([role in command_user.roles for role in [
+               bot_manager_role, bot_user_role]]):
             return True
         else:
             return False
 
-    async def is_bot_manager(self, guild_id: int, role_id_list: list) -> bool:
+    async def is_bot_manager(self, guild: discord.Guild, command_user: discord.Member) -> bool:
         """そのサーバーのBOT_manager役職を持っているか判定する関数
 
         Args:
-            guild_id (int): サーバーのID
-            role_id_list (list): そのユーザの持つIDのリスト
+            guild (discord.Guild): サーバーのギルドオブジェクト
+            command_user (discord.Member): コマンド使用者のメンバーオブジェクト
 
         Returns:
             bool: 入ってたらTrue、入ってなかったらFalse
         """
-        guild = await self.setting_mng.get_guild(guild_id)
-        if guild.bot_manager_id in role_id_list:
+        guild_DB = await self.setting_mng.get_guild(guild.id)
+        bot_manager_role = guild.get_role(guild_DB.bot_manager_id)
+        if bot_manager_role in command_user.roles:
             return True
         else:
             return False
