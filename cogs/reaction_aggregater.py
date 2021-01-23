@@ -147,9 +147,8 @@ class reaction(commands.Cog):
 
     @commands.command(aliases=['cnt'])
     @has_some_role()
-    # これを、roleだけじゃなくて個人でもよくする
-    async def count(self, ctx, num: typing.Optional[int] = 0, *roles: discord.Role):
-        if num == 0:
+        if not await self.is_bot_user(ctx.guild, ctx.author):
+            raise commands.CheckFailure
             await ctx.send("引数を正しく入力してください")
             return
 
