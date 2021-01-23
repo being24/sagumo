@@ -184,6 +184,15 @@ class reaction(commands.Cog):
 
         now = datetime.now()
 
+        await self.aggregation_mng.register_aggregation(
+            msg_id=msg.id,
+            guild_id=ctx.guild.id,
+            channel_id=ctx.channel.id,
+            target_value=target_value,
+            author_id=ctx.author.id,
+            created_at=now,
+            ping_id=insert_roles_str)
+
     @ count.error
     async def count_error(self, ctx, error):
         print(error)
