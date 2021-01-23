@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.schema import Column
 from sqlalchemy.sql.base import ColumnCollection
+from sqlalchemy.sql.elements import Null
 from sqlalchemy.sql.sqltypes import BOOLEAN, DATETIME, TIMESTAMP
 from sqlalchemy.types import VARCHAR, BigInteger, Integer, String
 
