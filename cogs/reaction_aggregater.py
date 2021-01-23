@@ -147,6 +147,15 @@ class reaction(commands.Cog):
 
     @commands.command(aliases=['cnt'])
     @has_some_role()
+        """リアクション集計を行うbot
+
+        Args:
+            ctx (discord.ext.commands.context.Context): いつもの
+            target_value (int, optional): リアクションの合計数. Defaults to 0.
+
+        Raises:
+            commands.CheckFailure: 権限を持っていなかったらCheckFailureを上げるようにした、on_errorで拾う
+        """
         if not await self.is_bot_user(ctx.guild, ctx.author):
             raise commands.CheckFailure
             await ctx.send("引数を正しく入力してください")
