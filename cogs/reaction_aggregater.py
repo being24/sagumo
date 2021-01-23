@@ -199,6 +199,9 @@ class reaction(commands.Cog):
         if isinstance(error, commands.BadArgument):
             notify_msg = await ctx.send(f'{ctx.author.mention}\n引数エラーです\n順番が間違っていませんか？')
             await self.autodel_msg(notify_msg)
+        elif isinstance(error, commands.CheckFailure):
+            notify_msg = await ctx.send(f'{ctx.author.mention}\nコマンドの使用権限を持っていません')
+            await self.autodel_msg(notify_msg)
         else:
             raise ValueError
 
