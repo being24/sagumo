@@ -64,6 +64,30 @@ class AggregationManager():
         async with self.engine.begin() as conn:
             await conn.run_sync(ReactionAggregation.metadata.create_all)
 
+    async def register_aggregation(self, msg_id: int, guild_id: int, channel_id: int, target_value: int, author_id: int, created_at: datetime, ping_id: str) -> None:
+        """リアクション集計のパラメータを登録する関数
+
+        Args:
+            msg_id (int): メッセージID
+            guild_id (int): サーバID
+            channel_id (int): チャンネルID
+            target_value (int): 目標値
+            author_id (int): 集計者のID
+            created_at (datetime): 作成日時
+            ping_id (str): 対象のID
+        """
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                new_aggregation = ReactionAggregation(
+                    msg_id=msg_id,
+                    guild_id=guild_id,
+                    channel_id=channel_id,
+                    target_value=target_value,
+                    author_id=author_id,
+                    created_at=created_at,
+                    ping_id=ping_id)
+
+                session.add(new_aggregation)
     '''
     async def register_guild(self, id, invite_channel, anti_spam, statusmessage_id, emoji_id):
         '''
