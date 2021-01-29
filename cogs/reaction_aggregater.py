@@ -12,10 +12,6 @@ from discord.ext import commands, tasks
 from .utils.reaction_aggregation_manager import AggregationManager
 from .utils.setting_manager import SettingManager
 
-# https://starnak.hatenablog.com/entry/2018/07/28/230500
-# has_roleだと動的にできないから、デコレータじゃなくてそういう関数を書く必要がある
-# guild_idとroles渡して管理or利用か？を確認する
-
 
 def has_some_role():
     async def predicate(ctx):
@@ -158,7 +154,9 @@ class reaction(commands.Cog):
             commands.CheckFailure: 権限を持っていなかったらCheckFailureを上げるようにした、on_errorで拾う
         """
         if not await self.is_bot_user(ctx.guild, ctx.author):
-            raise commands.CheckFailure
+            notify_msg = await ctx.send(f'{ctx.author.mention}\nコマンドの使用権限を持っていません')
+            await self.autodel_msg(notify_msg)
+            return
 
         if target_value == 0:
             await ctx.send("引数を正しく入力してください")
@@ -195,19 +193,28 @@ class reaction(commands.Cog):
 
     @ count.error
     async def count_error(self, ctx, error):
-        print(error)
+        """カウント関数専用のエラーハンドラ
+
+        Args:
+            ctx (discord.ext.commands.context.Context): いつもの
+            error (discord.ext.commands.CommandError): エラーの内容
+
+        Raises:
+            ValueError: なんでValueError出すのこれ
+        """
         if isinstance(error, commands.BadArgument):
             notify_msg = await ctx.send(f'{ctx.author.mention}\n引数エラーです\n順番が間違っていませんか？')
-            await self.autodel_msg(notify_msg)
-        elif isinstance(error, commands.CheckFailure):
-            notify_msg = await ctx.send(f'{ctx.author.mention}\nコマンドの使用権限を持っていません')
             await self.autodel_msg(notify_msg)
         else:
             raise ValueError
 
     @ commands.command(aliases=['lsre'])
-    @ has_some_role()
     async def list_reaction(self, ctx):
+        if not await self.is_bot_manager(ctx.guild, ctx.author):
+            notify_msg = await ctx.send(f'{ctx.author.mention}\nコマンドの使用権限を持っていません')
+            await self.autodel_msg(notify_msg)
+            return
+        
         if len(self.reaction_dict) == 0:
             await ctx.send("集計中のリアクションはありません")
         else:
