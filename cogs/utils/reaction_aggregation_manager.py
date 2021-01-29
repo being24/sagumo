@@ -5,6 +5,7 @@ import asyncio
 import pathlib
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Union
 
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
@@ -88,7 +89,70 @@ class AggregationManager():
                     ping_id=ping_id)
 
                 session.add(new_aggregation)
+
+    async def get_guild_list(self, guild_id: int) -> list:
+        """ギルドごとのリアクションのデータオブジェクトをリストで返す関数
+
+        Args:
+            guild_id (int): サーバーID
+
+        Returns:
+            list: ReactionParameterのリスト
+        """
+        guild_list = []
+
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                stmt = select(ReactionAggregation).where(
+                    ReactionAggregation.guild_id == guild_id)
+                result = await session.execute(stmt)
+                result = result.fetchall()
+
+                # guild_list_raw = [guild[0] for guild in result]
+                for guild in result:
+                    guild_raw = ReactionParameter(
+                        msg_id=guild[0].msg_id,
+                        guild_id=guild[0].guild_id,
+                        channel_id=guild[0].channel_id,
+                        target_value=guild[0].target_value,
+                        sum=guild[0].sum,
+                        matte=guild[0].sum,
+                        author_id=guild[0].author_id,
+                        created_at=guild[0].created_at,
+                        notified_at=guild[0].notified_at,
+                        remind=guild[0].remind,
+                        ping_id=guild[0].ping_id)
+                    guild_list.append(guild_raw)
+        return guild_list
+
     '''
+    async def get_guild(self, guild_id: int) -> Union[ReactionAggregation, None]:
+        """ギルドの情報をGuildSettingで返す関数
+
+        Args:
+            guild_id (int): サーバーID
+
+        Returns:
+            GuildSetting: サーバの設定のデータクラス
+        """
+        async with AsyncSession(self.engine, expire_on_commit=True) as session:
+            async with session.begin():
+                stmt = select(ReactionAggregation).where(
+                    ReactionAggregation.guild_id == guild_id)
+                result = await session.execute(stmt)
+                result = result.fetchone()
+
+                if result is None:
+                    return None
+
+                guildsetting = ReactionParameter(
+                    result[0].guild_id,
+                    result[0].bot_manager_id,
+                    result[0].bot_user_id)
+
+        return guildsetting
+
+
     async def register_guild(self, id, invite_channel, anti_spam, statusmessage_id, emoji_id):
         '''
     # サーバーをDBに追加するコマンド（新規登録）
@@ -178,7 +242,7 @@ class AggregationManager():
 
 if __name__ == "__main__":
     reaction_mng = AggregationManager()
-    asyncio.run(reaction_mng.create_table())
+    asyncio.run(reaction_mng.get_guild_list(609058923353341973))
 
     # asyncio.run(guild_mng.register_setting())
 
