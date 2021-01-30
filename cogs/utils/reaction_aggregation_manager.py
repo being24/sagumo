@@ -242,7 +242,9 @@ class AggregationManager():
 
 if __name__ == "__main__":
     reaction_mng = AggregationManager()
-    asyncio.run(reaction_mng.get_guild_list(609058923353341973))
+    result = asyncio.run(reaction_mng.get_guild_list(609058923353341973))
+
+    print(result)
 
     # asyncio.run(guild_mng.register_setting())
 
