@@ -110,6 +110,15 @@ class AggregationManager():
 
                 # guild_list_raw = [guild[0] for guild in result]
                 for guild in result:
+                    '''
+                    ping_id_list = []
+                    guild_id_list_str = guild[0].ping_id.split(',')
+                    for guild_id_str in guild_id_list_str:
+                        if guild_id_str != '':
+                            id = int(guild_id_str)
+                            ping_id_list.append(id)
+                    '''
+                    ping_id_list = [int(id) for id in guild[0].ping_id.split(',') if id != '']
                     guild_raw = ReactionParameter(
                         msg_id=guild[0].msg_id,
                         guild_id=guild[0].guild_id,
