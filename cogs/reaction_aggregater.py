@@ -174,7 +174,7 @@ class reaction(commands.Cog):
 
     @commands.command(aliases=['cnt'])
     @has_some_role()
-    async def count(self, ctx, target_value: int = 0, *role_or_member: typing.Union[discord.Role, discord.Member]):
+    async def count(self, ctx, target_value: int = 0, *role_or_members: typing.Union[discord.Role, discord.Member]):
         """リアクション集計を行うbot
 
         Args:
@@ -193,15 +193,16 @@ class reaction(commands.Cog):
             await ctx.send("引数を正しく入力してください")
             return
 
-        if len(role_or_member) == 0:
+        if len(role_or_members) == 0:
             insert_roles_id = []
         else:
-            insert_roles_id = [i.id for i in role_or_member]
+            insert_roles_id = [
+                role_or_member.id for role_or_member in role_or_members]
 
         first_msg = f"{ctx.author.mention}\nリアクション集計を行います: 目標リアクション数 : **{target_value}**"
 
         if len(insert_roles_id) > 0:
-            mid_msg = f"指定された役職/ユーザー : {' '.join([i.name for i in role_or_member])}\n"
+            mid_msg = f"指定された役職/ユーザー : {' '.join([role_or_member.name for role_or_member in role_or_members])}\n"
         else:
             mid_msg = ""
 
