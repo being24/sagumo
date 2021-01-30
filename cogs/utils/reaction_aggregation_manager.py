@@ -125,12 +125,12 @@ class AggregationManager():
                         channel_id=guild[0].channel_id,
                         target_value=guild[0].target_value,
                         sum=guild[0].sum,
-                        matte=guild[0].sum,
+                        matte=guild[0].matte,
                         author_id=guild[0].author_id,
                         created_at=guild[0].created_at,
                         notified_at=guild[0].notified_at,
                         remind=guild[0].remind,
-                        ping_id=guild[0].ping_id)
+                        ping_id=ping_id_list)
                     guild_list.append(guild_raw)
         return guild_list
 
