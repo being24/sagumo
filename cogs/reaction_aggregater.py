@@ -56,6 +56,24 @@ class reaction(commands.Cog):
         url = f'https://discord.com/channels/{reaction.guild_id}/{reaction.channel_id}/{reaction.msg_id}'
         return url
 
+    @staticmethod
+    def return_member_or_role(
+            ctx, id: int) -> typing.Union[discord.Member, discord.Role]:
+        """メンバーか役職オブジェクトを返す関数
+
+        Args:
+            ctx (discord.ext.commands.context.Context): いつもの
+            id (int): 役職かメンバーのID
+
+        Returns:
+            typing.Union[discord.Member, discord.Role]: discord.Memberかdiscord.Role
+        """
+        user_or_role = ctx.guild.get_role(id)
+        if user_or_role is None:
+            user_or_role = ctx.guild.get_member(id)
+
+        return user_or_role
+
     async def is_bot_user(self, guild: discord.Guild, command_user: discord.Member) -> bool:
         """そのサーバーのBOT_user役職を持っているか判定する関数
 
