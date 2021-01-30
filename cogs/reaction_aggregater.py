@@ -43,6 +43,19 @@ class reaction(commands.Cog):
         except discord.Forbidden:
             pass
 
+    @staticmethod
+    def get_msgurl_from_reaction(reaction) -> str:
+        """msgurlをリアクションから生成する関数
+
+        Args:
+            reaction (ReactionParameter): リアクションオブジェクト
+
+        Returns:
+            str: discordのURL
+        """
+        url = f'https://discord.com/channels/{reaction.guild_id}/{reaction.channel_id}/{reaction.msg_id}'
+        return url
+
     async def is_bot_user(self, guild: discord.Guild, command_user: discord.Member) -> bool:
         """そのサーバーのBOT_user役職を持っているか判定する関数
 
