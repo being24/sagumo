@@ -90,7 +90,7 @@ class AggregationManager():
 
                 session.add(new_aggregation)
 
-    async def get_guild_list(self, guild_id: int) -> list:
+    async def get_guild_list(self, guild_id: int) -> Union[list, None]:
         """ギルドごとのリアクションのデータオブジェクトをリストで返す関数
 
         Args:
