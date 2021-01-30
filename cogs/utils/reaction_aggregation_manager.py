@@ -132,7 +132,11 @@ class AggregationManager():
                         remind=guild[0].remind,
                         ping_id=ping_id_list)
                     guild_list.append(guild_raw)
-        return guild_list
+
+        if len(guild_list) == 0:
+            return None
+        else:
+            return guild_list
 
     '''
     async def get_guild(self, guild_id: int) -> Union[ReactionAggregation, None]:
