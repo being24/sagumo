@@ -246,34 +246,37 @@ class reaction(commands.Cog):
             notify_msg = await ctx.send(f'{ctx.author.mention}\nコマンドの使用権限を持っていません')
             await self.autodel_msg(notify_msg)
             return
-        
-        if len(self.reaction_dict) == 0:
+
+        reaction_list_of_guild = await self.aggregation_mng.get_guild_list(ctx.guild.id)
+
+        if reaction_list_of_guild is None:
             await ctx.send("集計中のリアクションはありません")
         else:
             embed = discord.Embed(
                 title="集計中のリアクションは以下の通りです",
-                description=f"{len(self.reaction_dict)}件集計中",
-                color=0xffffff)
+                description=f"本サーバーでは{len(reaction_list_of_guild)}件集計中",
+                color=0x0088ff)
 
-            for num, i in enumerate(self.reaction_dict):
-                auth = self.reaction_dict[i]["author"]
-                time = self.reaction_dict[i]["time"]
-                url = self.reaction_dict[i]["url"]
+            for num, reaction in enumerate(reaction_list_of_guild):
+                time = reaction.created_at.strftime('%Y-%m-%d %H:%M:%S')
+
+                url = self.get_msgurl_from_reaction(reaction)
+
                 role = ' '.join(
-                    [f'<@&{i}>' for i in self.reaction_dict[i]["role"]])
-                reaction_sum = self.reaction_dict[i]["reaction_sum"]
-                reaction_cnt = self.reaction_dict[i]["cnt"]
+                    [f'{self.return_member_or_role(ctx, id).mention}' for id in reaction.ping_id])
 
-                if self.reaction_dict[i]["matte"] > 0:
+                if reaction.matte:
                     matte = " **待って！**"
                 else:
                     matte = ""
 
+                reaction_author = ctx.guild.get_member(reaction.author_id)
+
                 embed.add_field(
                     name=f"{num+1}番目",
-                    value=f"ID : {i} by : {auth} time : {time} progress : {reaction_sum}/{reaction_cnt}{matte} role : {role}\n{url}",
+                    value=f"**ID** : {reaction.msg_id} by : {reaction_author.mention} progress : {reaction.sum}/{reaction.target_value}{matte}\nrole : {role} time : {time} [link.]({url})",
                     inline=False)
-            embed.set_footer(text="あんまり貯めないでね")
+            embed.set_footer(text="DB化によってめっちゃためても問題なくなったよ！勝手に消すしね！")
             await ctx.send(embed=embed)
 
     @ commands.command()
