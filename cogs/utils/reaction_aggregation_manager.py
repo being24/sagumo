@@ -32,7 +32,7 @@ class ReactionParameter:
     created_at: datetime
     notified_at: datetime
     remind: bool
-    ping_id: str
+    ping_id: list
 
 
 class ReactionAggregation(Base):
