@@ -240,7 +240,7 @@ class reaction(commands.Cog):
         else:
             raise ValueError
 
-    @ commands.command(aliases=['lsre'])
+    @ commands.command(aliases=['lsre', 'ls'])
     async def list_reaction(self, ctx):
         if not await self.is_bot_manager(ctx.guild, ctx.author):
             notify_msg = await ctx.send(f'{ctx.author.mention}\nコマンドの使用権限を持っていません')
