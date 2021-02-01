@@ -8,6 +8,7 @@ from datetime import datetime
 
 import discord
 from discord.ext import commands, tasks
+from discord.ext.menus import ListPageSource, MenuPages
 
 from .utils.reaction_aggregation_manager import AggregationManager
 from .utils.setting_manager import SettingManager
@@ -20,28 +21,10 @@ def has_some_role():
     return commands.check(predicate)
 
 
-class reaction(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-
-        self.setting_mng = SettingManager()
-        self.aggregation_mng = AggregationManager()
-
-        if not self.bot.loop.is_running():
-            self.reaction_reminder.start()
-
-    @staticmethod
-    async def autodel_msg(msg: discord.Message, second: int = 5):
-        """渡されたメッセージを指定秒数後に削除する関数
-
-        Args:
-            msg (discord.Message): 削除するメッセージオブジェクト
-            second (int, optional): 秒数. Defaults to 5.
-        """
-        try:
-            await msg.delete(delay=second)
-        except discord.Forbidden:
-            pass
+class ReactionList(ListPageSource):
+    def __init__(self, ctx, data):
+        self.ctx = ctx
+        super().__init__(data, per_page=10)
 
     @staticmethod
     def get_msgurl_from_reaction(reaction) -> str:
@@ -73,6 +56,91 @@ class reaction(commands.Cog):
             user_or_role = ctx.guild.get_member(id)
 
         return user_or_role
+
+    async def write_page(self, menu, fields=[]):
+        offset = (menu.current_page * self.per_page) + 1
+        len_data = len(self.entries)
+
+        embed = discord.Embed(
+            title="集計中のリアクションは以下の通りです",
+            description=f"本サーバーでは{len_data}件集計中",
+            color=0x0088ff)
+        embed.set_thumbnail(url=self.ctx.guild.me.avatar_url)
+
+        embed.set_footer(
+            text=f"{offset:,} - {min(len_data, offset+self.per_page-1):,} of {len_data:,} records.")
+
+        print(offset)
+
+        for num, reaction in enumerate(fields):
+            time = reaction.created_at.strftime('%Y-%m-%d %H:%M:%S')
+
+            url = self.get_msgurl_from_reaction(reaction)
+
+            target = ' '.join(
+                [f'{self.return_member_or_role(self.ctx, id).mention}' for id in reaction.ping_id])
+
+            if reaction.matte:
+                matte = " **待って！**"
+            else:
+                matte = ""
+
+            reaction_author = self.ctx.guild.get_member(reaction.author_id)
+
+            embed.add_field(
+                name=f"{num+offset}番目",
+                value=f"**ID** : {reaction.msg_id} by : {reaction_author.mention} progress : {reaction.sum}/{reaction.target_value}{matte}\ntarget : {target} time : {time} [link.]({url})",
+                inline=False)
+
+        return embed
+
+    async def format_page(self, menu, entries):
+        '''
+        fields = []
+
+        for entry in entries:
+            print(entry)
+            fields.append((entry.brief, syntax(entry)))
+        '''
+        return await self.write_page(menu, entries)
+
+
+def syntax(command):
+    aliases = "/".join([str(command), *command.aliases])
+    params = []
+
+    for key, value, in command.params.items():
+        if key not in ("self", "ctx"):
+            params.append(
+                f"[{key}]" if "NoneType" in str(value) else f"<{key}>")
+
+    params = ' '.join(params)
+
+    return f"```{aliases} {params}```"
+
+
+class reaction(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+        self.setting_mng = SettingManager()
+        self.aggregation_mng = AggregationManager()
+
+        if not self.bot.loop.is_running():
+            self.reaction_reminder.start()
+
+    @staticmethod
+    async def autodel_msg(msg: discord.Message, second: int = 5):
+        """渡されたメッセージを指定秒数後に削除する関数
+
+        Args:
+            msg (discord.Message): 削除するメッセージオブジェクト
+            second (int, optional): 秒数. Defaults to 5.
+        """
+        try:
+            await msg.delete(delay=second)
+        except discord.Forbidden:
+            pass
 
     async def is_bot_user(self, guild: discord.Guild, command_user: discord.Member) -> bool:
         """そのサーバーのBOT_user役職を持っているか判定する関数
@@ -252,32 +320,10 @@ class reaction(commands.Cog):
         if reaction_list_of_guild is None:
             await ctx.send("集計中のリアクションはありません")
         else:
-            embed = discord.Embed(
-                title="集計中のリアクションは以下の通りです",
-                description=f"本サーバーでは{len(reaction_list_of_guild)}件集計中",
-                color=0x0088ff)
-
-            for num, reaction in enumerate(reaction_list_of_guild):
-                time = reaction.created_at.strftime('%Y-%m-%d %H:%M:%S')
-
-                url = self.get_msgurl_from_reaction(reaction)
-
-                role = ' '.join(
-                    [f'{self.return_member_or_role(ctx, id).mention}' for id in reaction.ping_id])
-
-                if reaction.matte:
-                    matte = " **待って！**"
-                else:
-                    matte = ""
-
-                reaction_author = ctx.guild.get_member(reaction.author_id)
-
-                embed.add_field(
-                    name=f"{num+1}番目",
-                    value=f"**ID** : {reaction.msg_id} by : {reaction_author.mention} progress : {reaction.sum}/{reaction.target_value}{matte}\nrole : {role} time : {time} [link.]({url})",
-                    inline=False)
-            embed.set_footer(text="DB化によってめっちゃためても問題なくなったよ！勝手に消すしね！")
-            await ctx.send(embed=embed)
+            menu = MenuPages(source=ReactionList(ctx, reaction_list_of_guild),
+                             delete_message_after=True,
+                             timeout=60.0)
+            await menu.start(ctx)
 
     @ commands.command()
     @ commands.is_owner()
@@ -285,6 +331,10 @@ class reaction(commands.Cog):
         self.reaction_dict = {}
         # self.dump_json(self.reaction_dict)
         await ctx.send("全てのデータを削除しました")
+
+    @ commands.command()
+    async def test(self, ctx):
+        pass
 
     @ commands.command(aliases=['rm'])
     @ commands.has_permissions(ban_members=True)
@@ -301,6 +351,7 @@ class reaction(commands.Cog):
     @ commands.Cog.listener()
     async def on_raw_reaction_add(self, reaction):
         # await
+        return
         for msg_id in list(self.reaction_dict):
             if int(msg_id) == reaction.message_id:
                 channel = self.bot.get_channel(reaction.channel_id)
@@ -332,6 +383,7 @@ class reaction(commands.Cog):
 
     @ commands.Cog.listener()
     async def on_raw_reaction_remove(self, reaction):
+        return
         remove_usr = self.bot.get_user(reaction.user_id)
         if remove_usr.bot:
             return
@@ -398,7 +450,7 @@ class reaction(commands.Cog):
         today = datetime.today()
         now_M = today.strftime('%M')
 
-        if now_M == '00':
+        if now_M == '61':
             for i in self.reaction_dict.keys():
                 start_time = datetime.strptime(
                     self.reaction_dict[i]['time'], '%Y-%m-%d %H:%M:%S')
