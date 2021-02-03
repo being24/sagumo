@@ -12,6 +12,7 @@ from discord.ext.menus import ListPageSource, MenuPages
 
 from .utils.reaction_aggregation_manager import AggregationManager
 from .utils.setting_manager import SettingManager
+from .utils.confirm import Confirm
 
 
 def has_some_role():
@@ -321,10 +322,15 @@ class ReactionAggregator(commands.Cog):
             return
 
         if await self.aggregation_mng.is_exist(msg_id):
-            await self.aggregation_mng.remove_aggregation(msg_id)
-            await ctx.send(f"メッセージID : {msg_id}を削除しました")
+            confirm = await Confirm(f'ID : {msg_id}のリアクション集計を終了し、削除しますか？').prompt(ctx)
+            if confirm:
+                await self.aggregation_mng.remove_aggregation(msg_id)
+                await ctx.send(f"ID : {msg_id}は{ctx.author}により削除されました")
+            else:
+                notify_msg = await ctx.send(f"ID : {msg_id}の削除を中止しました")
+                await self.autodel_msg(notify_msg)
         else:
-            notify_msg = await ctx.send(f"メッセージID : {msg_id}はリアクション集計対象ではありません")
+            notify_msg = await ctx.send(f"ID : {msg_id}はリアクション集計対象ではありません")
             await self.autodel_msg(notify_msg)
 
     @ commands.Cog.listener()
