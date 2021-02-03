@@ -118,7 +118,8 @@ class AggregationManager():
                             id = int(guild_id_str)
                             ping_id_list.append(id)
                     '''
-                    ping_id_list = [int(id) for id in guild[0].ping_id.split(',') if id != '']
+                    ping_id_list = [
+                        int(id) for id in guild[0].ping_id.split(',') if id != '']
                     guild_raw = ReactionParameter(
                         msg_id=guild[0].msg_id,
                         guild_id=guild[0].guild_id,
@@ -137,6 +138,37 @@ class AggregationManager():
             return None
         else:
             return guild_list
+
+    async def is_exist(self, msg_id: int) -> bool:
+        """引数のメッセージIDが集計中かを判定する関数
+
+        Args:
+            guild_id (int): サーバーID
+
+        Returns:
+            bool: あったらTrue、なかったらFalse
+        """
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                stmt = select(ReactionAggregation).where(
+                    ReactionAggregation.msg_id == msg_id)
+                result = await session.execute(stmt)
+                result = result.fetchone()
+                if result is not None:
+                    return True
+                else:
+                    return False
+
+    async def remove_aggregation(self, msg_id: int) -> None:
+        """リアクション集計を削除するコマンド
+
+        Args:
+            msg_id (int): メッセージID
+        """
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                stmt = delete(ReactionAggregation).where(ReactionAggregation.msg_id == msg_id)
+                await session.execute(stmt)
 
     '''
     async def get_guild(self, guild_id: int) -> Union[ReactionAggregation, None]:
@@ -255,7 +287,7 @@ class AggregationManager():
 
 if __name__ == "__main__":
     reaction_mng = AggregationManager()
-    result = asyncio.run(reaction_mng.get_guild_list(609058923353341973))
+    result = asyncio.run(reaction_mng.remove_aggregation(802561743162572800))
 
     print(result)
 
