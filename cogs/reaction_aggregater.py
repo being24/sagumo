@@ -70,8 +70,6 @@ class ReactionList(ListPageSource):
         embed.set_footer(
             text=f"{offset:,} - {min(len_data, offset+self.per_page-1):,} of {len_data:,} records.")
 
-        print(offset)
-
         for num, reaction in enumerate(fields):
             time = reaction.created_at.strftime('%Y-%m-%d %H:%M:%S')
 
@@ -99,7 +97,6 @@ class ReactionList(ListPageSource):
         fields = []
 
         for entry in entries:
-            print(entry)
             fields.append((entry.brief, syntax(entry)))
         '''
         return await self.write_page(menu, entries)
@@ -119,7 +116,11 @@ def syntax(command):
     return f"```{aliases} {params}```"
 
 
-class reaction(commands.Cog):
+class ReactionAggregator(commands.Cog):
+    """
+    リアクション集計のカテゴリ
+    """
+
     def __init__(self, bot):
         self.bot = bot
 
@@ -218,15 +219,9 @@ class reaction(commands.Cog):
             # self.dump_json(self.reaction_dict)
             pass
 
-    @commands.command(aliases=['s_init'])
+    @commands.command(aliases=['s_init'], description='リアクション集計コマンド')
     async def sagumo_initialization(self, ctx, bot_manager: discord.Role, bot_user: discord.Role):
-        """ギルドごとの管理者、使用者役職を登録するコマンド
-
-        Args:
-            ctx (discord.ext.commands.context.Context): いつもの
-            bot_manager (discord.Role): bot管理者役職
-            bot_user (discord.Role): bot使用者役職
-        """
+        """沙雲の初期設定をするコマンド"""
         if await self.setting_mng.is_exist(ctx.guild.id):
             await self.setting_mng.update_guild(
                 guild_id=ctx.guild.id,
@@ -240,18 +235,10 @@ class reaction(commands.Cog):
                 bot_user_id=bot_user.id)
             await ctx.send(f'{ctx.guild}のbot管理者に{bot_manager.mention}を、bot操作者に{bot_user.mention}を設定しました')
 
-    @commands.command(aliases=['cnt'])
+    @commands.command(aliases=['cnt'], description='リアクション集計コマンド')
     @has_some_role()
     async def count(self, ctx, target_value: int = 0, *role_or_members: typing.Union[discord.Role, discord.Member]):
-        """リアクション集計を行うbot
-
-        Args:
-            ctx (discord.ext.commands.context.Context): いつもの
-            target_value (int, optional): リアクションの合計数. Defaults to 0.
-
-        Raises:
-            commands.CheckFailure: 権限を持っていなかったらCheckFailureを上げるようにした、on_errorで拾う
-        """
+        """リアクション集計を行うコマンド"""
         if not await self.is_bot_user(ctx.guild, ctx.author):
             notify_msg = await ctx.send(f'{ctx.author.mention}\nコマンドの使用権限を持っていません')
             await self.autodel_msg(notify_msg)
@@ -325,28 +312,20 @@ class reaction(commands.Cog):
                              timeout=60.0)
             await menu.start(ctx)
 
-    @ commands.command()
-    @ commands.is_owner()
-    async def clear_all(self, ctx):
-        self.reaction_dict = {}
-        # self.dump_json(self.reaction_dict)
-        await ctx.send("全てのデータを削除しました")
+    @ commands.command(aliases=['rm'], description='集計を中止するコマンド')
+    async def remove(self, ctx, msg_id: int):
+        """DBから情報を削除し、集計を中止するコマンド"""
+        if not await self.is_bot_manager(ctx.guild, ctx.author):
+            notify_msg = await ctx.send(f'{ctx.author.mention}\nコマンドの使用権限を持っていません')
+            await self.autodel_msg(notify_msg)
+            return
 
-    @ commands.command()
-    async def test(self, ctx):
-        pass
-
-    @ commands.command(aliases=['rm'])
-    @ commands.has_permissions(ban_members=True)
-    async def remove(self, ctx, num: typing.Optional[str]):
-        try:
-            aggregate_id = num.replace(" ", "")
-            url = self.reaction_dict[aggregate_id]["url"]
-            del self.reaction_dict[aggregate_id]
-            # self.dump_json(self.reaction_dict)
-            await ctx.send(f"1件削除しました\n{url}")
-        except KeyError:
-            await ctx.send("キーが存在しません")
+        if await self.aggregation_mng.is_exist(msg_id):
+            await self.aggregation_mng.remove_aggregation(msg_id)
+            await ctx.send(f"メッセージID : {msg_id}を削除しました")
+        else:
+            notify_msg = await ctx.send(f"メッセージID : {msg_id}はリアクション集計対象ではありません")
+            await self.autodel_msg(notify_msg)
 
     @ commands.Cog.listener()
     async def on_raw_reaction_add(self, reaction):
@@ -462,4 +441,4 @@ class reaction(commands.Cog):
 
 
 def setup(bot):
-    bot.add_cog(reaction(bot))
+    bot.add_cog(ReactionAggregator(bot))
