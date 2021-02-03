@@ -13,7 +13,11 @@ import discosnow as ds
 from discord.ext import commands, tasks
 
 
-class Admin(commands.Cog):
+class Admin(commands.Cog, name='管理用コマンド群'):
+    """
+    管理用のコマンドです
+    """
+
     def __init__(self, bot):
         self.bot = bot
         self.master_path = os.path.dirname(
@@ -56,8 +60,9 @@ class Admin(commands.Cog):
         except BaseException:
             pass
 
-    @commands.command(aliases=['p'], hidden=True)
+    @commands.command(aliases=['p'], hidden=False, brief='疎通確認')
     async def ping(self, ctx):
+        """Pingによる疎通確認を行うコマンド"""
         start_time = time.time()
         mes = await ctx.send("Pinging....")
         await mes.edit(content="pong!\n" + str(round(time.time() - start_time, 3) * 1000) + "ms")
@@ -75,12 +80,12 @@ class Admin(commands.Cog):
 
     @commands.command(hidden=True)
     async def back_up(self, ctx):
-        json_files = [
+        SQLite_files = [
             filename for filename in os.listdir(self.master_path + "/data")
-            if filename.endswith(".json")]
+            if filename.endswith(".sqlite")]
 
         my_files = [discord.File(f'{self.master_path}/data/{i}')
-                    for i in json_files]
+                    for i in SQLite_files]
 
         await ctx.send(files=my_files)
 
@@ -94,8 +99,10 @@ class Admin(commands.Cog):
         async for message in ctx.channel.history(limit=100):
             if message.author.id == self.bot.user.id:
                 if len(message.attachments) != 0:
-                    attachments_name = ' '.join([i.filename for i in message.attachments])
-                    msg_time = ds.snowflake2time(message.id).strftime('%m-%d %H:%M')
+                    attachments_name = ' '.join(
+                        [i.filename for i in message.attachments])
+                    msg_time = ds.snowflake2time(
+                        message.id).strftime('%m-%d %H:%M')
                     await ctx.send(f'{msg_time}の{attachments_name}を取り込みます')
                     for attachment in message.attachments:
                         await attachment.save(f"{self.master_path}/data/{attachment.filename}")
@@ -111,8 +118,12 @@ class Admin(commands.Cog):
         if now_HM == '04:00':
             channel = self.bot.get_channel(745128369170939965)
 
-            json_files = [filename for filename in os.listdir(self.master_path + "/data")if filename.endswith(".json")]
-            my_files = [discord.File(f'{self.master_path}/data/{i}')for i in json_files]
+            SQLite_files = [
+                filename for filename in os.listdir(
+                    self.master_path +
+                    "/data")if filename.endswith(".sqlite")]
+            my_files = [
+                discord.File(f'{self.master_path}/data/{i}')for i in SQLite_files]
 
             await channel.send(files=my_files)
 
