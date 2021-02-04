@@ -323,36 +323,33 @@ class ReactionAggregator(commands.Cog):
 
     @ commands.Cog.listener()
     async def on_raw_reaction_add(self, reaction):
-        # await
-        return
-        for msg_id in list(self.reaction_dict):
-            if int(msg_id) == reaction.message_id:
-                channel = self.bot.get_channel(reaction.channel_id)
-                member_role_ids = [role.id for role in reaction.member.roles]
-                reaction_role_ids = self.reaction_dict[msg_id]["role"]
+        if reaction_data := await self.aggregation_mng.get_aggregation(reaction.message_id):
+            msg_id = reaction.message_id
 
-                if len(reaction_role_ids) == 0:
-                    pass
-                else:
-                    if len(set(reaction_role_ids) & set(member_role_ids)) == 0:
-                        self.reaction_dict[msg_id]["reaction_sum"] += 1
-                        msg = await channel.fetch_message(reaction.message_id)
-                        try:
-                            await msg.remove_reaction(str(reaction.emoji), reaction.member)
-                        except discord.Forbidden:
-                            await channel.send('リアクションの除去に失敗しました.')
-                        notify_msg = await channel.send(f"{reaction.member.mention} 権限無しのリアクションは禁止です！")
-                        # await self.autodel_msg(notify_msg)
-                        return
+            member_role_ids = [role.id for role in reaction.member.roles]
+            channel = self.bot.get_channel(reaction.channel_id)
 
-                if "matte" in reaction.emoji.name:
-                    self.reaction_dict[msg_id]["matte"] += 1
+            if len(reaction_data.ping_id) == 0:
+                pass
+            elif len(set(reaction_data.ping_id) & set(member_role_ids)) == 0:
+                msg = await channel.fetch_message(reaction.message_id)
+                try:
+                    await msg.remove_reaction(str(reaction.emoji), reaction.member)
+                except discord.Forbidden:
+                    await channel.send('リアクションの除去に失敗しました.')
+                notify_msg = await channel.send(f"{reaction.member.mention} 権限無しのリアクションは禁止です！")
+                # await self.autodel_msg(notify_msg)
+                return
+
+            if "matte" in reaction.emoji.name:
+                if not reaction_data.matte:
+                    await self.aggregation_mng.set_value_to_matte(msg_id=msg_id, tf=True)
                     msg = await channel.fetch_message(reaction.message_id)
                     await msg.edit(content=msg.content + "\n待ちます")
-                else:
-                    self.reaction_dict[msg_id]["reaction_sum"] += 1
+            else:
+                await self.aggregation_mng.set_value_to_sum(msg_id=msg_id, val=reaction_data.sum + 1)
 
-                await self.judge_and_notice(msg_id)
+            # await self.judge_and_notice(msg_id)
 
     @ commands.Cog.listener()
     async def on_raw_reaction_remove(self, reaction):
