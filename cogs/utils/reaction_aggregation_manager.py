@@ -145,20 +145,7 @@ class AggregationManager():
                             id = int(guild_id_str)
                             ping_id_list.append(id)
                     '''
-                    ping_id_list = [
-                        int(id) for id in guild[0].ping_id.split(',') if id != '']
-                    guild_raw = ReactionParameter(
-                        msg_id=guild[0].msg_id,
-                        guild_id=guild[0].guild_id,
-                        channel_id=guild[0].channel_id,
-                        target_value=guild[0].target_value,
-                        sum=guild[0].sum,
-                        matte=guild[0].matte,
-                        author_id=guild[0].author_id,
-                        created_at=guild[0].created_at,
-                        notified_at=guild[0].notified_at,
-                        remind=guild[0].remind,
-                        ping_id=ping_id_list)
+                    guild_raw = self.return_dataclass(guild)
                     guild_list.append(guild_raw)
 
         if len(guild_list) == 0:
