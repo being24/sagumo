@@ -207,9 +207,9 @@ class ReactionAggregator(commands.Cog):
             # self.dump_json(self.reaction_dict)
             pass
 
-    @commands.command(aliases=['s_init'], description='リアクション集計コマンド')
+    @commands.command(aliases=['s_init'], description='沙雲の管理用役職を登録するコマンド')
     async def sagumo_initialization(self, ctx, bot_manager: discord.Role, bot_user: discord.Role):
-        """沙雲の初期設定をするコマンド"""
+        """管理用役職:bot管理者とbot使用者を登録するコマンド、順番注意"""
         if await self.setting_mng.is_exist(ctx.guild.id):
             await self.setting_mng.update_guild(
                 guild_id=ctx.guild.id,
@@ -283,8 +283,9 @@ class ReactionAggregator(commands.Cog):
         else:
             raise ValueError
 
-    @ commands.command(aliases=['lsre', 'ls'])
+    @ commands.command(aliases=['lsre', 'ls'], description='集計中一覧')
     async def list_reaction(self, ctx):
+        """集計中のリアクション一覧を表示するコマンド"""
         if not await self.is_bot_manager(ctx.guild, ctx.author):
             notify_msg = await ctx.send(f'{ctx.author.mention}\nコマンドの使用権限を持っていません')
             await self.autodel_msg(notify_msg)
