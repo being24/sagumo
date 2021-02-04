@@ -42,41 +42,41 @@ class Admin(commands.Cog, name='管理用コマンド群'):
                         reloaded_list.append(cog)
                     except Exception:
                         traceback.print_exc()
-            await ctx.send(f"{reloaded_list}をreloadしました")
+            await ctx.reply(f"{reloaded_list}をreloadしました", mention_author=False)
         else:
             try:
                 self.bot.unload_extension(f'cogs.{cogname}')
                 self.bot.load_extension(f'cogs.{cogname}')
-                await ctx.send(f"{cogname}をreloadしました")
+                await ctx.reply(f"{cogname}をreloadしました", mention_author=False)
             except Exception as e:
                 print(e)
-                await ctx.send(e)
+                await ctx.reply(e, mention_author=False)
 
     @commands.command(aliases=['st'], hidden=True)
     async def status(self, ctx, word: str):
         try:
             await self.bot.change_presence(activity=discord.Game(name=word))
-            await ctx.send(f"ステータスを{word}に変更しました")
+            await ctx.reply(f"ステータスを{word}に変更しました", mention_author=False)
         except BaseException:
             pass
 
-    @commands.command(aliases=['p'], hidden=False, brief='疎通確認')
+    @commands.command(aliases=['p'], hidden=False, description='疎通確認')
     async def ping(self, ctx):
         """Pingによる疎通確認を行うコマンド"""
         start_time = time.time()
-        mes = await ctx.send("Pinging....")
+        mes = await ctx.reply("Pinging....")
         await mes.edit(content="pong!\n" + str(round(time.time() - start_time, 3) * 1000) + "ms")
 
     @commands.command(aliases=['wh'], hidden=True)
     async def where(self, ctx):
-        await ctx.send("現在入っているサーバーは以下です")
+        await ctx.reply("現在入っているサーバーは以下です", mention_author=False)
         server_list = [i.name.replace('\u3000', ' ')
                        for i in ctx.bot.guilds]
-        await ctx.send(f"{server_list}")
+        await ctx.reply(f"{server_list}", mention_author=False)
 
     @commands.command(aliases=['mem'], hidden=True)
     async def num_of_member(self, ctx):
-        await ctx.send(f"{ctx.guild.member_count}")
+        await ctx.reply(f"{ctx.guild.member_count}", mention_author=False)
 
     @commands.command(hidden=True)
     async def back_up(self, ctx):
