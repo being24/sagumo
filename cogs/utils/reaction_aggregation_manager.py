@@ -61,6 +61,24 @@ class AggregationManager():
         self.engine = create_async_engine(
             f'sqlite:///{db_path}', echo=True)
 
+    @staticmethod
+    def return_dataclass(guild) -> ReactionParameter:
+        ping_id_list = [
+            int(id) for id in guild[0].ping_id.split(',') if id != '']
+        guild_raw = ReactionParameter(
+            msg_id=guild[0].msg_id,
+            guild_id=guild[0].guild_id,
+            channel_id=guild[0].channel_id,
+            target_value=guild[0].target_value,
+            sum=guild[0].sum,
+            matte=guild[0].matte,
+            author_id=guild[0].author_id,
+            created_at=guild[0].created_at,
+            notified_at=guild[0].notified_at,
+            remind=guild[0].remind,
+            ping_id=ping_id_list)
+        return guild_raw
+
     async def create_table(self):
         async with self.engine.begin() as conn:
             await conn.run_sync(ReactionAggregation.metadata.create_all)
