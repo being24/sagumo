@@ -88,7 +88,8 @@ class ReactionList(ListPageSource):
 
             embed.add_field(
                 name=f"{num+offset}番目",
-                value=f"**ID** : {reaction.msg_id} by : {reaction_author.mention} progress : {reaction.sum}/{reaction.target_value}{matte}\ntarget : {target} time : {time} [link.]({url})",
+                value=f"**ID** : {reaction.msg_id} by : {reaction_author.mention} progress : {reaction.sum}/{reaction.target_value}{matte}\n\
+                    target : {target} time : {time} [link.]({url})",
                 inline=False)
 
         return embed
