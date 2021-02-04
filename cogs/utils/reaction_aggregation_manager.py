@@ -181,7 +181,54 @@ class AggregationManager():
         """
         async with AsyncSession(self.engine) as session:
             async with session.begin():
-                stmt = delete(ReactionAggregation).where(ReactionAggregation.msg_id == msg_id)
+                stmt = delete(ReactionAggregation).where(
+                    ReactionAggregation.msg_id == msg_id)
+                await session.execute(stmt)
+
+    async def get_aggregation(self, msg_id: int) -> Union[None, ReactionParameter]:
+        """メッセージIDから集計中の情報を返す関数
+
+        Args:
+            msg_id (int): 対象のメッセージID
+
+        Returns:
+            Union[None, ReactionParameter]: あれば情報、なければNone
+        """
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                stmt = select(ReactionAggregation).where(
+                    ReactionAggregation.msg_id == msg_id)
+                result = await session.execute(stmt)
+                result = result.fetchone()
+                if result is None:
+                    return None
+                else:
+                    return self.return_dataclass(result)
+
+    async def set_value_to_sum(self, msg_id: int, val: int) -> None:
+        """sumカラムに値を代入する関数
+
+        Args:
+            msg_id (int): メッセージID
+            val (int): 値
+        """
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                stmt = update(ReactionAggregation).where(
+                    ReactionAggregation.msg_id == msg_id).values(sum=val)
+                await session.execute(stmt)
+
+    async def set_value_to_matte(self, msg_id: int, tf: bool) -> None:
+        """matteカラムに値を代入する関数
+
+        Args:
+            msg_id (int): メッセージID
+            tf (bool): 値
+        """
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                stmt = update(ReactionAggregation).where(
+                    ReactionAggregation.msg_id == msg_id).values(matte=tf)
                 await session.execute(stmt)
 
     '''
@@ -301,7 +348,7 @@ class AggregationManager():
 
 if __name__ == "__main__":
     reaction_mng = AggregationManager()
-    result = asyncio.run(reaction_mng.remove_aggregation(802561743162572800))
+    result = asyncio.run(reaction_mng.set_value_to_sum(806872577574043721, 9))
 
     print(result)
 
