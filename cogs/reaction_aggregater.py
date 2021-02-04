@@ -215,13 +215,13 @@ class ReactionAggregator(commands.Cog):
                 guild_id=ctx.guild.id,
                 bot_manager_id=bot_manager.id,
                 bot_user_id=bot_user.id)
-            await ctx.send(f'{ctx.guild}のbot管理者に{bot_manager.mention}を、bot操作者に{bot_user.mention}に更新しました')
+            await ctx.reply(f'{ctx.guild}のbot管理者に{bot_manager.mention}を、bot操作者に{bot_user.mention}に更新しました', mention_author=False)
         else:
             await self.setting_mng.register_guild(
                 guild_id=ctx.guild.id,
                 bot_manager_id=bot_manager.id,
                 bot_user_id=bot_user.id)
-            await ctx.send(f'{ctx.guild}のbot管理者に{bot_manager.mention}を、bot操作者に{bot_user.mention}を設定しました')
+            await ctx.reply(f'{ctx.guild}のbot管理者に{bot_manager.mention}を、bot操作者に{bot_user.mention}を設定しました')
 
     @commands.command(aliases=['cnt'], description='リアクション集計コマンド')
     @has_some_role()
@@ -242,7 +242,7 @@ class ReactionAggregator(commands.Cog):
             insert_roles_id = [
                 role_or_member.id for role_or_member in role_or_members]
 
-        first_msg = f"{ctx.author.mention}\nリアクション集計を行います: 目標リアクション数 : **{target_value}**"
+        first_msg = f"リアクション集計を行います: 目標リアクション数 : **{target_value}**"
 
         if len(insert_roles_id) > 0:
             mid_msg = f"指定された役職/ユーザー : {' '.join([role_or_member.name for role_or_member in role_or_members])}\n"
@@ -253,7 +253,7 @@ class ReactionAggregator(commands.Cog):
 
         last_msg = "本メッセージにリアクションをつけてください"
 
-        msg = await ctx.send(f"{first_msg}\n{mid_msg}{last_msg}")
+        msg = await ctx.reply(f"{first_msg}\n{mid_msg}{last_msg}")
 
         now = datetime.now()
 
@@ -313,7 +313,7 @@ class ReactionAggregator(commands.Cog):
             confirm = await Confirm(f'ID : {msg_id}のリアクション集計を終了し、削除しますか？').prompt(ctx)
             if confirm:
                 await self.aggregation_mng.remove_aggregation(msg_id)
-                await ctx.send(f"ID : {msg_id}は{ctx.author}により削除されました")
+                await ctx.reply(f"ID : {msg_id}は{ctx.author}により削除されました")
             else:
                 notify_msg = await ctx.send(f"ID : {msg_id}の削除を中止しました")
                 await self.autodel_msg(notify_msg)
