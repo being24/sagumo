@@ -62,22 +62,31 @@ class AggregationManager():
             f'sqlite:///{db_path}', echo=True)
 
     @staticmethod
-    def return_dataclass(guild) -> ReactionParameter:
+    def return_dataclass(db_data) -> ReactionParameter:
+        """DBからの情報をデータクラスに変換する関数、もうちょっとなんとかならんか？？？
+
+
+        Args:
+            db_data (sqlalchemyの): DBから取り出したデータ
+
+        Returns:
+            ReactionParameter: データクラス
+        """
         ping_id_list = [
-            int(id) for id in guild[0].ping_id.split(',') if id != '']
-        guild_raw = ReactionParameter(
-            msg_id=guild[0].msg_id,
-            guild_id=guild[0].guild_id,
-            channel_id=guild[0].channel_id,
-            target_value=guild[0].target_value,
-            sum=guild[0].sum,
-            matte=guild[0].matte,
-            author_id=guild[0].author_id,
-            created_at=guild[0].created_at,
-            notified_at=guild[0].notified_at,
-            remind=guild[0].remind,
+            int(id) for id in db_data[0].ping_id.split(',') if id != '']
+        db_data_raw = ReactionParameter(
+            msg_id=db_data[0].msg_id,
+            guild_id=db_data[0].guild_id,
+            channel_id=db_data[0].channel_id,
+            target_value=db_data[0].target_value,
+            sum=db_data[0].sum,
+            matte=db_data[0].matte,
+            author_id=db_data[0].author_id,
+            created_at=db_data[0].created_at,
+            notified_at=db_data[0].notified_at,
+            remind=db_data[0].remind,
             ping_id=ping_id_list)
-        return guild_raw
+        return db_data_raw
 
     async def create_table(self):
         async with self.engine.begin() as conn:
