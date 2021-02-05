@@ -10,7 +10,7 @@ import discord
 from discord.ext import commands, tasks
 from discord.ext.menus import ListPageSource, MenuPages
 
-from .utils.reaction_aggregation_manager import AggregationManager
+from .utils.reaction_aggregation_manager import AggregationManager, ReactionParameter
 from .utils.setting_manager import SettingManager
 from .utils.confirm import Confirm
 
