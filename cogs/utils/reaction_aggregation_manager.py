@@ -22,12 +22,13 @@ Base = declarative_base()
 
 @dataclass
 class ReactionParameter:
-    msg_id: int
+    message_id: int
+    command_id: int
     guild_id: int
     channel_id: int
     target_value: int
     sum: int
-    matte: bool
+    matte: int
     author_id: int
     created_at: datetime
     notified_at: datetime
@@ -38,12 +39,13 @@ class ReactionParameter:
 class ReactionAggregation(Base):
     __tablename__ = 'reactionaggregation'
 
-    msg_id = Column(BigInteger, primary_key=True)  # メッセージID
+    message_id = Column(BigInteger, primary_key=True)  # メッセージID
     guild_id = Column(BigInteger, nullable=False)  # ギルドID
+    command_id = Column(BigInteger, nullable=False)  # コマンドID
     channel_id = Column(BigInteger, nullable=False)  # チャンネルID
     target_value = Column(Integer, nullable=False)  # 目標値
     sum = Column(Integer, default=0)  # 現在の合計値
-    matte = Column(BOOLEAN, default=False)  # 待ってが付いてるかどうか
+    matte = Column(Integer, default=0)  # 待ってがついている数
     author_id = Column(BigInteger, nullable=False)  # 集めてる人のID
     created_at = Column(DATETIME, nullable=False)  # 集計開始時間
     notified_at = Column(DATETIME)  # 集計完了時間
@@ -75,7 +77,8 @@ class AggregationManager():
         ping_id_list = [
             int(id) for id in db_data[0].ping_id.split(',') if id != '']
         db_data_raw = ReactionParameter(
-            msg_id=db_data[0].msg_id,
+            message_id=db_data[0].message_id,
+            command_id=db_data[0].command_id,
             guild_id=db_data[0].guild_id,
             channel_id=db_data[0].channel_id,
             target_value=db_data[0].target_value,
@@ -92,11 +95,12 @@ class AggregationManager():
         async with self.engine.begin() as conn:
             await conn.run_sync(ReactionAggregation.metadata.create_all)
 
-    async def register_aggregation(self, msg_id: int, guild_id: int, channel_id: int, target_value: int, author_id: int, created_at: datetime, ping_id: str) -> None:
+    async def register_aggregation(self, message_id: int, command_id: int, guild_id: int, channel_id: int, target_value: int, author_id: int, created_at: datetime, ping_id: str) -> None:
         """リアクション集計のパラメータを登録する関数
 
         Args:
-            msg_id (int): メッセージID
+            message_id (int): メッセージID
+            command_id (int): コマンドID
             guild_id (int): サーバID
             channel_id (int): チャンネルID
             target_value (int): 目標値
@@ -107,7 +111,8 @@ class AggregationManager():
         async with AsyncSession(self.engine) as session:
             async with session.begin():
                 new_aggregation = ReactionAggregation(
-                    msg_id=msg_id,
+                    message_id=message_id,
+                    command_id=command_id,
                     guild_id=guild_id,
                     channel_id=channel_id,
                     target_value=target_value,
@@ -153,7 +158,7 @@ class AggregationManager():
         else:
             return guild_list
 
-    async def is_exist(self, msg_id: int) -> bool:
+    async def is_exist(self, message_id: int) -> bool:
         """引数のメッセージIDが集計中かを判定する関数
 
         Args:
@@ -165,7 +170,7 @@ class AggregationManager():
         async with AsyncSession(self.engine) as session:
             async with session.begin():
                 stmt = select(ReactionAggregation).where(
-                    ReactionAggregation.msg_id == msg_id)
+                    ReactionAggregation.message_id == message_id)
                 result = await session.execute(stmt)
                 result = result.fetchone()
                 if result is not None:
@@ -173,23 +178,23 @@ class AggregationManager():
                 else:
                     return False
 
-    async def remove_aggregation(self, msg_id: int) -> None:
+    async def remove_aggregation(self, message_id: int) -> None:
         """リアクション集計を削除するコマンド
 
         Args:
-            msg_id (int): メッセージID
+            message_id (int): メッセージID
         """
         async with AsyncSession(self.engine) as session:
             async with session.begin():
                 stmt = delete(ReactionAggregation).where(
-                    ReactionAggregation.msg_id == msg_id)
+                    ReactionAggregation.message_id == message_id)
                 await session.execute(stmt)
 
-    async def get_aggregation(self, msg_id: int) -> Union[None, ReactionParameter]:
+    async def get_aggregation(self, message_id: int) -> Union[None, ReactionParameter]:
         """メッセージIDから集計中の情報を返す関数
 
         Args:
-            msg_id (int): 対象のメッセージID
+            message_id (int): 対象のメッセージID
 
         Returns:
             Union[None, ReactionParameter]: あれば情報、なければNone
@@ -197,7 +202,7 @@ class AggregationManager():
         async with AsyncSession(self.engine) as session:
             async with session.begin():
                 stmt = select(ReactionAggregation).where(
-                    ReactionAggregation.msg_id == msg_id)
+                    ReactionAggregation.message_id == message_id)
                 result = await session.execute(stmt)
                 result = result.fetchone()
                 if result is None:
@@ -205,30 +210,46 @@ class AggregationManager():
                 else:
                     return self.return_dataclass(result)
 
-    async def set_value_to_sum(self, msg_id: int, val: int) -> None:
+    async def set_value_to_sum(self, message_id: int, val: int) -> None:
         """sumカラムに値を代入する関数
 
         Args:
-            msg_id (int): メッセージID
+            message_id (int): メッセージID
             val (int): 値
         """
         async with AsyncSession(self.engine) as session:
             async with session.begin():
                 stmt = update(ReactionAggregation).where(
-                    ReactionAggregation.msg_id == msg_id).values(sum=val)
+                    ReactionAggregation.message_id == message_id).values(
+                    sum=val)
                 await session.execute(stmt)
 
-    async def set_value_to_matte(self, msg_id: int, tf: bool) -> None:
+    async def set_value_to_matte(self, message_id: int, val: int) -> None:
         """matteカラムに値を代入する関数
 
         Args:
-            msg_id (int): メッセージID
-            tf (bool): 値
+            message_id (int): メッセージID
+            val (int): 値
         """
         async with AsyncSession(self.engine) as session:
             async with session.begin():
                 stmt = update(ReactionAggregation).where(
-                    ReactionAggregation.msg_id == msg_id).values(matte=tf)
+                    ReactionAggregation.message_id == message_id).values(
+                    matte=val)
+                await session.execute(stmt)
+
+    async def set_value_to_notified(self, message_id: int, notified_time: datetime) -> None:
+        """[summary]
+
+        Args:
+            message_id (int): メッセージID
+            notified_time (datetime): 値
+        """
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                stmt = update(ReactionAggregation).where(
+                    ReactionAggregation.message_id == message_id).values(
+                    notified_at=notified_time)
                 await session.execute(stmt)
 
     '''

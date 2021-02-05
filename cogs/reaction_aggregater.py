@@ -90,7 +90,7 @@ class ReactionList(ListPageSource):
 
             embed.add_field(
                 name=f"{num+offset}番目",
-                value=f"**ID** : {reaction.msg_id} by : {reaction_author.mention} progress : {reaction.sum}/{reaction.target_value}{matte}\n\
+                value=f"**ID** : {reaction.message_id} by : {reaction_author.mention} progress : {reaction.sum}/{reaction.target_value}{matte}\n\
                     target : {target} time : {time} [link.]({url})",
                 inline=False)
 
@@ -132,6 +132,39 @@ class ReactionAggregator(commands.Cog):
             await msg.delete(delay=second)
         except discord.Forbidden:
             pass
+
+    @staticmethod
+    def get_msgurl_from_reaction(reaction: ReactionParameter) -> str:
+        """msgurlをリアクションから生成する関数
+
+        Args:
+            reaction (ReactionParameter): リアクションオブジェクト
+
+        Returns:
+            str: discordのURL
+        """
+        url = f'https://discord.com/channels/{reaction.guild_id}/{reaction.channel_id}/{reaction.message_id}'
+        return url
+
+    @staticmethod
+    def return_member_or_role(guild: discord.Guild,
+                              id: int) -> typing.Union[discord.Member,
+                                                       discord.Role,
+                                                       None]:
+        """メンバーか役職オブジェクトを返す関数
+
+        Args:
+            guild (discord.guild): discordのguildオブジェクト
+            id (int): 役職かメンバーのID
+
+        Returns:
+            typing.Union[discord.Member, discord.Role]: discord.Memberかdiscord.Role
+        """
+        user_or_role = guild.get_role(id)
+        if user_or_role is None:
+            user_or_role = guild.get_member(id)
+
+        return user_or_role
 
     async def is_bot_user(self, guild: discord.Guild, command_user: discord.Member) -> bool:
         """そのサーバーのBOT_user役職を持っているか判定する関数
@@ -180,34 +213,38 @@ class ReactionAggregator(commands.Cog):
         await self.aggregation_mng.create_table()
         await self.setting_mng.create_table()
 
-    async def judge_and_notice(self, msg_id):
-        if self.reaction_dict[msg_id]["cnt"] <= self.reaction_dict[msg_id][
-                "reaction_sum"] and self.reaction_dict[msg_id]["matte"] == 0:
-            channel = self.bot.get_channel(
-                self.reaction_dict[msg_id]["channel"])
-            mention = self.reaction_dict[msg_id]["author"]
-            url = self.reaction_dict[msg_id]["url"]
-            roles = self.reaction_dict[msg_id]["role"]
-            roles = [channel.guild.get_role(i).name for i in roles]
-            roles = ' '.join(roles)
+    async def judge_and_notice(self, message_id: int):
+        reaction_data = await self.aggregation_mng.get_aggregation(message_id)
+        if reaction_data is None:
+            return
+
+        if reaction_data.target_value == reaction_data.sum and reaction_data.matte == 0:
+            channel = self.bot.get_channel(reaction_data.channel_id)
+            guild = self.bot.get_guild(reaction_data.guild_id)
+            command_msg = await channel.fetch_message(reaction_data.command_id)
+
+            url = self.get_msgurl_from_reaction(reaction_data)
+
+            roles = [
+                self.return_member_or_role(guild, id).name
+                for id in reaction_data.ping_id]
 
             if len(roles) == 0:
                 roles = 'None'
             else:
                 roles = ' '.join(roles)
 
+            now = datetime.now()
+
+            await self.aggregation_mng.set_value_to_notified(reaction_data.message_id, now)
+
             embed = discord.Embed(title="規定数のリアクションがたまりました")
             embed.add_field(name="終了した集計のリンク", value=f"{url}", inline=False)
-            embed.set_footer(text=f"対象の役職 : {roles}")
+            embed.add_field(name="集計完了時間", value=f"{now.strftime('%Y-%m-%d %H:%M:%S')}", inline=False)
+            embed.set_footer(text=f"target : {roles}")
 
-            await channel.send(f"{mention}")
-            await channel.send(embed=embed)
-
-            self.reaction_dict.pop(msg_id, None)
-            # self.dump_json(self.reaction_dict)
-        else:
-            # self.dump_json(self.reaction_dict)
-            pass
+            await command_msg.reply(embed=embed)
+            # けすのは集計完了してから数日後？
 
     @commands.command(aliases=['s_init'], description='沙雲の管理用役職を登録するコマンド')
     async def sagumo_initialization(self, ctx, bot_manager: discord.Role, bot_user: discord.Role):
@@ -260,7 +297,8 @@ class ReactionAggregator(commands.Cog):
         now = datetime.now()
 
         await self.aggregation_mng.register_aggregation(
-            msg_id=msg.id,
+            message_id=msg.id,
+            command_id=ctx.message.id,
             guild_id=ctx.guild.id,
             channel_id=ctx.channel.id,
             target_value=target_value,
@@ -304,31 +342,37 @@ class ReactionAggregator(commands.Cog):
             await menu.start(ctx)
 
     @ commands.command(aliases=['rm'], description='集計を中止するコマンド')
-    async def remove(self, ctx, msg_id: int):
+    async def remove(self, ctx, message_id: int):
         """DBから情報を削除し、集計を中止するコマンド"""
         if not await self.is_bot_manager(ctx.guild, ctx.author):
             notify_msg = await ctx.send(f'{ctx.author.mention}\nコマンドの使用権限を持っていません')
             await self.autodel_msg(notify_msg)
             return
 
-        if await self.aggregation_mng.is_exist(msg_id):
-            confirm = await Confirm(f'ID : {msg_id}のリアクション集計を終了し、削除しますか？').prompt(ctx)
+        if await self.aggregation_mng.is_exist(message_id):
+            confirm = await Confirm(f'ID : {message_id}のリアクション集計を終了し、削除しますか？').prompt(ctx)
             if confirm:
-                await self.aggregation_mng.remove_aggregation(msg_id)
-                await ctx.reply(f"ID : {msg_id}は{ctx.author}により削除されました")
+                await self.aggregation_mng.remove_aggregation(message_id)
+                await ctx.reply(f"ID : {message_id}は{ctx.author}により削除されました")
             else:
-                notify_msg = await ctx.send(f"ID : {msg_id}の削除を中止しました")
+                notify_msg = await ctx.send(f"ID : {message_id}の削除を中止しました")
                 await self.autodel_msg(notify_msg)
         else:
-            notify_msg = await ctx.send(f"ID : {msg_id}はリアクション集計対象ではありません")
+            notify_msg = await ctx.send(f"ID : {message_id}はリアクション集計対象ではありません")
             await self.autodel_msg(notify_msg)
 
     @ commands.Cog.listener()
     async def on_raw_reaction_add(self, reaction):
+        """リアクションが追加されたときに、集計対象メッセージであれば+1する関数
+
+        Args:
+            reaction (discord.Reaction): reactionオブジェクト
+        """
         if reaction_data := await self.aggregation_mng.get_aggregation(reaction.message_id):
-            msg_id = reaction.message_id
+            message_id = reaction.message_id
 
             member_role_ids = [role.id for role in reaction.member.roles]
+            member_role_ids.append(reaction.user_id)
             channel = self.bot.get_channel(reaction.channel_id)
 
             if len(reaction_data.ping_id) == 0:
@@ -344,39 +388,44 @@ class ReactionAggregator(commands.Cog):
                 return
 
             if "matte" in reaction.emoji.name:
-                if not reaction_data.matte:
-                    await self.aggregation_mng.set_value_to_matte(msg_id=msg_id, tf=True)
-                    msg = await channel.fetch_message(reaction.message_id)
-                    await msg.edit(content=msg.content + "\n待ちます")
+                await self.aggregation_mng.set_value_to_matte(message_id=message_id, val=reaction_data.matte + 1)
+                msg = await channel.fetch_message(reaction.message_id)
+                await msg.edit(content=msg.content + "\n待ちます")
             else:
-                await self.aggregation_mng.set_value_to_sum(msg_id=msg_id, val=reaction_data.sum + 1)
+                await self.aggregation_mng.set_value_to_sum(message_id=message_id, val=reaction_data.sum + 1)
 
-            # await self.judge_and_notice(msg_id)
+            await self.judge_and_notice(message_id)
 
     @ commands.Cog.listener()
     async def on_raw_reaction_remove(self, reaction):
-        return
-        remove_usr = self.bot.get_user(reaction.user_id)
-        if remove_usr.bot:
-            return
-        for msg_id in list(self.reaction_dict):
-            if int(msg_id) == reaction.message_id:
-                if "matte" in reaction.emoji.name:
-                    self.reaction_dict[msg_id]["matte"] -= 1
-                    channel = self.bot.get_channel(reaction.channel_id)
-                    msg = await channel.fetch_message(reaction.message_id)
-                    await msg.edit(content=msg.content.replace("\n待ちます", "", 1))
-                else:
-                    self.reaction_dict[msg_id]["reaction_sum"] -= 1
+        """リアクションが除去されたときに、集計対象メッセージであれば-1する関数
 
-                await self.judge_and_notice(msg_id)
+        Args:
+            reaction (discord.Reaction): reactionオブジェクト
+        """
+        if reaction_data := await self.aggregation_mng.get_aggregation(reaction.message_id):
+            message_id = reaction.message_id
+            remove_usr = self.bot.get_user(reaction.user_id)
+            channel = self.bot.get_channel(reaction.channel_id)
 
-    async def remind(self, msg_id, elapsed_time) -> None:
-        if self.reaction_dict[msg_id]["matte"] > 0:
+            if remove_usr.bot:
+                return
+
+            if "matte" in reaction.emoji.name:
+                await self.aggregation_mng.set_value_to_matte(message_id=message_id, val=reaction_data.matte - 1)
+                msg = await channel.fetch_message(reaction.message_id)
+                await msg.edit(content=msg.content.replace("\n待ちます", "", 1))
+            else:
+                await self.aggregation_mng.set_value_to_sum(message_id=message_id, val=reaction_data.sum - 1)
+
+            await self.judge_and_notice(message_id)
+
+    async def remind(self, message_id, elapsed_time) -> None:
+        if self.reaction_dict[message_id]["matte"] > 0:
             return
 
         try:
-            reminded = self.reaction_dict[msg_id]["reminded"]
+            reminded = self.reaction_dict[message_id]["reminded"]
         except KeyError:
             reminded = 0
 
@@ -384,9 +433,9 @@ class ReactionAggregator(commands.Cog):
             return
 
         channel = self.bot.get_channel(
-            self.reaction_dict[msg_id]["channel"])
-        url = self.reaction_dict[msg_id]["url"]
-        roles = self.reaction_dict[msg_id]["role"]
+            self.reaction_dict[message_id]["channel"])
+        url = self.reaction_dict[message_id]["url"]
+        roles = self.reaction_dict[message_id]["role"]
 
         if len(roles) == 0:
             roles_mention = 'None'
@@ -398,21 +447,21 @@ class ReactionAggregator(commands.Cog):
             roles_name = [channel.guild.get_role(i).name for i in roles]
             roles_name = ' '.join(roles_name)
 
-        auth = self.reaction_dict[msg_id]["author"]
-        reaction_sum = self.reaction_dict[msg_id]["reaction_sum"]
-        reaction_cnt = self.reaction_dict[msg_id]["cnt"]
+        auth = self.reaction_dict[message_id]["author"]
+        reaction_sum = self.reaction_dict[message_id]["reaction_sum"]
+        reaction_cnt = self.reaction_dict[message_id]["cnt"]
 
         embed = discord.Embed(title="上記、リマインドします")
         embed.add_field(
             name="詳細",
-            value=f"ID : {msg_id} by : {auth} 経過時間 : {elapsed_time} progress : {reaction_sum}/{reaction_cnt}\n{url}",
+            value=f"ID : {message_id} by : {auth} 経過時間 : {elapsed_time} progress : {reaction_sum}/{reaction_cnt}\n{url}",
             inline=False)
-        embed.set_footer(text=f"対象の役職 : {roles_name} ID : {msg_id}")
+        embed.set_footer(text=f"対象の役職 : {roles_name} ID : {message_id}")
 
         await channel.send(f"{roles_mention}")
         await channel.send(embed=embed)
 
-        self.reaction_dict[msg_id]['reminded'] = 1
+        self.reaction_dict[message_id]['reminded'] = 1
         # self.dump_json(self.reaction_dict)
 
     @ tasks.loop(seconds=10.0)
