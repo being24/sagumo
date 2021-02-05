@@ -79,7 +79,7 @@ class ReactionList(ListPageSource):
             url = self.get_msgurl_from_reaction(reaction)
 
             target = ' '.join(
-                [f'{self.return_member_or_role(self.ctx, id).mention}' for id in reaction.ping_id])
+                [f'{self.return_member_or_role(self.ctx.guild, id).mention}' for id in reaction.ping_id])
 
             if reaction.matte:
                 matte = " **待って！**"
