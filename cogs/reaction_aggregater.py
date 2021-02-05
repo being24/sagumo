@@ -28,7 +28,7 @@ class ReactionList(ListPageSource):
         super().__init__(data, per_page=10)
 
     @staticmethod
-    def get_msgurl_from_reaction(reaction) -> str:
+    def get_msgurl_from_reaction(reaction: ReactionParameter) -> str:
         """msgurlをリアクションから生成する関数
 
         Args:
@@ -37,24 +37,26 @@ class ReactionList(ListPageSource):
         Returns:
             str: discordのURL
         """
-        url = f'https://discord.com/channels/{reaction.guild_id}/{reaction.channel_id}/{reaction.msg_id}'
+        url = f'https://discord.com/channels/{reaction.guild_id}/{reaction.channel_id}/{reaction.message_id}'
         return url
 
     @staticmethod
-    def return_member_or_role(
-            ctx, id: int) -> typing.Union[discord.Member, discord.Role]:
+    def return_member_or_role(guild: discord.Guild,
+                              id: int) -> typing.Union[discord.Member,
+                                                       discord.Role,
+                                                       None]:
         """メンバーか役職オブジェクトを返す関数
 
         Args:
-            ctx (discord.ext.commands.context.Context): いつもの
+            guild (discord.guild): discordのguildオブジェクト
             id (int): 役職かメンバーのID
 
         Returns:
             typing.Union[discord.Member, discord.Role]: discord.Memberかdiscord.Role
         """
-        user_or_role = ctx.guild.get_role(id)
+        user_or_role = guild.get_role(id)
         if user_or_role is None:
-            user_or_role = ctx.guild.get_member(id)
+            user_or_role = guild.get_member(id)
 
         return user_or_role
 
