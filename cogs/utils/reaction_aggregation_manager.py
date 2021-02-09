@@ -71,6 +71,15 @@ class AggregationManager():
         Returns:
             ReactionParameter: データクラス
         """
+
+        '''
+        ping_id_list = []
+        guild_id_list_str = guild[0].ping_id.split(',')
+        for guild_id_str in guild_id_list_str:
+            if guild_id_str != '':
+                id = int(guild_id_str)
+                ping_id_list.append(id)
+        '''
         ping_id_list = [
             int(id) for id in db_data[0].ping_id.split(',') if id != '']
         db_data_raw = ReactionParameter(
@@ -119,7 +128,7 @@ class AggregationManager():
 
                 session.add(new_aggregation)
 
-    async def get_guild_list(self, guild_id: int) -> Union[list, None]:
+    async def get_guild_list(self, guild_id: int) -> Union[List[ReactionParameter], None]:
         """ギルドごとのリアクションのデータオブジェクトをリストで返す関数
 
         Args:
@@ -139,14 +148,6 @@ class AggregationManager():
 
                 # guild_list_raw = [guild[0] for guild in result]
                 for guild in result:
-                    '''
-                    ping_id_list = []
-                    guild_id_list_str = guild[0].ping_id.split(',')
-                    for guild_id_str in guild_id_list_str:
-                        if guild_id_str != '':
-                            id = int(guild_id_str)
-                            ping_id_list.append(id)
-                    '''
                     guild_raw = self.return_dataclass(guild)
                     guild_list.append(guild_raw)
 
@@ -208,7 +209,7 @@ class AggregationManager():
                     return self.return_dataclass(result)
 
     async def set_value_to_sum(self, message_id: int, val: int) -> None:
-        """sumカラムに値を代入する関数
+        """sumカラムに値をセットする関数
 
         Args:
             message_id (int): メッセージID
@@ -222,7 +223,7 @@ class AggregationManager():
                 await session.execute(stmt)
 
     async def set_value_to_matte(self, message_id: int, val: int) -> None:
-        """matteカラムに値を代入する関数
+        """matteカラムに値をセットする関数
 
         Args:
             message_id (int): メッセージID
@@ -236,7 +237,7 @@ class AggregationManager():
                 await session.execute(stmt)
 
     async def set_value_to_notified(self, message_id: int, notified_time: datetime) -> None:
-        """[summary]
+        """通知時刻をセットする関数
 
         Args:
             message_id (int): メッセージID
@@ -249,126 +250,88 @@ class AggregationManager():
                     notified_at=notified_time)
                 await session.execute(stmt)
 
-    '''
-    async def get_guild(self, guild_id: int) -> Union[ReactionAggregation, None]:
-        """ギルドの情報をGuildSettingで返す関数
+    async def set_value_to_remind(self, message_id: int, value: bool) -> None:
+        """リマインドされたかをセットする関数
 
         Args:
-            guild_id (int): サーバーID
-
-        Returns:
-            GuildSetting: サーバの設定のデータクラス
+            message_id (int): メッセージID
+            value (bool): 値
         """
-        async with AsyncSession(self.engine, expire_on_commit=True) as session:
-            async with session.begin():
-                stmt = select(ReactionAggregation).where(
-                    ReactionAggregation.guild_id == guild_id)
-                result = await session.execute(stmt)
-                result = result.fetchone()
-
-                if result is None:
-                    return None
-
-                guildsetting = ReactionParameter(
-                    result[0].guild_id,
-                    result[0].bot_manager_id,
-                    result[0].bot_user_id)
-
-        return guildsetting
-
-
-    async def register_guild(self, id, invite_channel, anti_spam, statusmessage_id, emoji_id):
-        '''
-    # サーバーをDBに追加するコマンド（新規登録）
-    '''
-        async with AsyncSession(self.engine, expire_on_commit=False) as session:
-            async with session.begin():
-                new_guild = Guild(
-                    id=id,
-                    invite_channel=invite_channel,
-                    anti_spam=anti_spam,
-                    statusmessage_id=statusmessage_id,
-                    emoji_id=emoji_id)
-
-                session.add(new_guild)
-
-    async def update_guild(self, id, invite_channel, anti_spam, statusmessage_id, emoji_id):
-        async with AsyncSession(self.engine, expire_on_commit=False) as session:
-            async with session.begin():
-                stmt = select(Guild).where(Guild.id == id)
-                result = await session.execute(stmt)
-                result = result.fetchone()[0]
-                result.invite_channel = invite_channel
-                result.anti_spam = anti_spam
-                result.statusmessage_id = statusmessage_id
-                result.emoji_id = emoji_id
-
-    async def remove_guild(self, id):
-        '''
-    # 全ギルドのオブジェクトを返す
-    '''
         async with AsyncSession(self.engine) as session:
             async with session.begin():
-                stmt = delete(Guild).where(Guild.id == id)
+                stmt = update(ReactionAggregation).where(
+                    ReactionAggregation.message_id == message_id).values(
+                    remind=value)
                 await session.execute(stmt)
 
-    async def get_guild(self, id):
-        '''
-    # ギルドオブジェクトを返す
-    '''
-        async with AsyncSession(self.engine, expire_on_commit=False) as session:
+    async def get_notified_aggregation(self) -> Union[None, List[ReactionParameter]]:
+        """通知済みのリアクション集計を取得する関数
+
+        Returns:
+            Union[None, list[ReactionParameter]]: なければNone、あったらリスト
+        """
+        async with AsyncSession(self.engine) as session:
             async with session.begin():
-                stmt = select(Guild).where(Guild.id == id)
+                stmt = select(ReactionAggregation).where(
+                    ReactionAggregation.notified_at.isnot(None))
                 result = await session.execute(stmt)
-                result = result.fetchone()
+                result = result.fetchall()
+                result = [self.return_dataclass(reaction)
+                          for reaction in result]
 
-        if result is None:
+        if len(result) == 0:
             return None
+        else:
+            return result
 
-        return result[0]
+    async def get_all_not_reminded_aggregation(self) -> Union[None, List[ReactionParameter]]:
+        """リマインドされてないリアクション集計をギルドID順で取得する関数
 
-    async def all_guilds(self):
-        '''
-    # 全ギルドのオブジェクトを返す
-    '''
-        async with AsyncSession(self.engine, expire_on_commit=False) as session:
+        Returns:
+            Union[None, List[ReactionParameter]]: なければNone、あったらリスト
+        """
+        async with AsyncSession(self.engine) as session:
             async with session.begin():
-                stmt = select(Guild)
-                guilds = await session.execute(stmt)
-                guilds = [guild[0] for guild in guilds.all()]
+                stmt = select(ReactionAggregation).where(
+                    ReactionAggregation.remind.is_(False)).order_by(
+                    ReactionAggregation.guild_id)
+                result = await session.execute(stmt)
+                result = result.fetchall()
+                result = [self.return_dataclass(reaction)
+                          for reaction in result]
 
-        return guilds
+        if len(result) == 0:
+            return None
+        else:
+            return result
 
-    def is_exist(self) -> bool:
-        '''
-    # 主キーが存在するか？
-    '''
-        with self.sc_factory.create() as session:
-            guild = session.query(Guild).filter(Guild.id == id).first()
-            if guild is not None:
-                return True
-            else:
-                return False
+    async def get_all_aggregation(self) -> Union[None, List[ReactionParameter]]:
+        """すべてのリアクション集計ギルドID順で取得する関数
 
-    async def all_guild_id(self) -> list:
-        '''
-    # ギルドIDのリストを返す
-    '''
-        async with AsyncSession(self.engine, expire_on_commit=False) as session:
+        Returns:
+            Union[None, List[ReactionParameter]]: なければNone、あったらリスト
+        """
+        async with AsyncSession(self.engine) as session:
             async with session.begin():
-                stmt = select(Guild)
-                guilds = await session.execute(stmt)
-                guild_ids = [guild[0].id for guild in guilds.all()]
+                stmt = select(ReactionAggregation).order_by(
+                    ReactionAggregation.guild_id)
+                result = await session.execute(stmt)
+                result = result.fetchall()
+                result = [self.return_dataclass(reaction)
+                          for reaction in result]
 
-        return guild_ids
-        '''
+        if len(result) == 0:
+            return None
+        else:
+            return result
 
 
 if __name__ == "__main__":
     reaction_mng = AggregationManager()
-    result = asyncio.run(reaction_mng.set_value_to_sum(806872577574043721, 9))
+    result = asyncio.run(reaction_mng.get_all_not_reminded_aggregation())
 
-    print(result)
+    for i in result:
+        print(i)
 
     # asyncio.run(guild_mng.register_setting())
 
