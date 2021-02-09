@@ -207,6 +207,15 @@ class ReactionAggregator(commands.Cog):
         else:
             return False
 
+    async def start_paginating(self, ctx, reaction_list_of_guild):
+        if reaction_list_of_guild is None:
+            await ctx.send("集計中のリアクションはありません")
+        else:
+            menu = MenuPages(source=ReactionList(ctx, reaction_list_of_guild),
+                             delete_message_after=True,
+                             timeout=60.0)
+            await menu.start(ctx)
+
     @commands.Cog.listener()
     async def on_ready(self):
         """on_ready時に発火する関数
@@ -241,7 +250,10 @@ class ReactionAggregator(commands.Cog):
 
             embed = discord.Embed(title="規定数のリアクションがたまりました")
             embed.add_field(name="終了した集計のリンク", value=f"{url}", inline=False)
-            embed.add_field(name="集計完了時間", value=f"{now.strftime('%Y-%m-%d %H:%M:%S')}", inline=False)
+            embed.add_field(
+                name="集計完了時間",
+                value=f"{now.strftime('%Y-%m-%d %H:%M:%S')}",
+                inline=False)
             embed.set_footer(text=f"target : {roles}")
 
             await command_msg.reply(embed=embed)
@@ -324,7 +336,8 @@ class ReactionAggregator(commands.Cog):
         else:
             raise ValueError
 
-    @ commands.command(aliases=['lsre', 'ls'], description='集計中一覧')
+    @ commands.group(aliases=['lsre', 'ls'],
+                     description='集計中一覧', invoke_without_command=True)
     async def list_reaction(self, ctx):
         """集計中のリアクション一覧を表示するコマンド"""
         if not await self.is_bot_manager(ctx.guild, ctx.author):
@@ -333,14 +346,21 @@ class ReactionAggregator(commands.Cog):
             return
 
         reaction_list_of_guild = await self.aggregation_mng.get_guild_list(ctx.guild.id)
+        reaction_list_of_guild = [
+            reaction for reaction in reaction_list_of_guild if reaction.notified_at is None]
 
-        if reaction_list_of_guild is None:
-            await ctx.send("集計中のリアクションはありません")
-        else:
-            menu = MenuPages(source=ReactionList(ctx, reaction_list_of_guild),
-                             delete_message_after=True,
-                             timeout=60.0)
-            await menu.start(ctx)
+        await self.start_paginating(ctx, reaction_list_of_guild)
+
+    @list_reaction.command()
+    async def all(self, ctx):
+        """集計中のすべてのリアクション一覧を表示するコマンド"""
+        if not await self.is_bot_manager(ctx.guild, ctx.author):
+            notify_msg = await ctx.send(f'{ctx.author.mention}\nコマンドの使用権限を持っていません')
+            await self.autodel_msg(notify_msg)
+            return
+
+        reaction_list_of_guild = await self.aggregation_mng.get_guild_list(ctx.guild.id)
+        await self.start_paginating(ctx, reaction_list_of_guild)
 
     @ commands.command(aliases=['rm'], description='集計を中止するコマンド')
     async def remove(self, ctx, message_id: int):
@@ -397,6 +417,10 @@ class ReactionAggregator(commands.Cog):
 
             await self.judge_and_notice(message_id)
 
+    @ commands.command()
+    async def test(self, reaction):
+        await self.remind()
+
     @ commands.Cog.listener()
     async def on_raw_reaction_remove(self, reaction):
         """リアクションが除去されたときに、集計対象メッセージであれば-1する関数
@@ -421,66 +445,97 @@ class ReactionAggregator(commands.Cog):
 
             await self.judge_and_notice(message_id)
 
-    async def remind(self, message_id, elapsed_time) -> None:
-        if self.reaction_dict[message_id]["matte"] > 0:
+    async def delete_notified(self) -> None:
+        """リアクション集計が終了してから3日以上たった時に削除するコマンド
+        """
+        notified_aggregation = await self.aggregation_mng.get_notified_aggregation()
+
+        if notified_aggregation is None:
             return
 
-        try:
-            reminded = self.reaction_dict[message_id]["reminded"]
-        except KeyError:
-            reminded = 0
+        now = datetime.now()
 
-        if reminded > 0:
+        for reaction in notified_aggregation:
+            elapsed_time = now - reaction.notified_at
+            if elapsed_time.days >= 3:
+                await self.aggregation_mng.remove_aggregation(reaction.message_id)
+
+    async def remind(self) -> None:
+        """リマインドを行う関数
+        """
+        all_aggregation = await self.aggregation_mng.get_all_not_reminded_aggregation()
+
+        if all_aggregation is None:
             return
 
-        channel = self.bot.get_channel(
-            self.reaction_dict[message_id]["channel"])
-        url = self.reaction_dict[message_id]["url"]
-        roles = self.reaction_dict[message_id]["role"]
+        now = datetime.now()
 
-        if len(roles) == 0:
-            roles_mention = 'None'
-            roles_name = 'None'
-        else:
-            roles_mention = [channel.guild.get_role(i).mention for i in roles]
-            roles_mention = ' '.join(roles_mention)
+        for reaction in all_aggregation:
+            elapsed_time = now - reaction.created_at
+            if elapsed_time.days >= 3:
+                channel = self.bot.get_channel(reaction.channel_id)
+                url = self.get_msgurl_from_reaction(reaction)
+                guild = self.bot.get_guild(reaction.guild_id)
 
-            roles_name = [channel.guild.get_role(i).name for i in roles]
-            roles_name = ' '.join(roles_name)
+                roles = [
+                    self.return_member_or_role(
+                        guild, id) for id in reaction.ping_id]
 
-        auth = self.reaction_dict[message_id]["author"]
-        reaction_sum = self.reaction_dict[message_id]["reaction_sum"]
-        reaction_cnt = self.reaction_dict[message_id]["cnt"]
+                if len(roles) == 0:
+                    roles_mention = 'None'
+                    roles_name = 'None'
+                else:
+                    roles_mention = ' '.join(
+                        [member.mention for member in roles])
+                    roles_name = ' '.join([member.name for member in roles])
 
-        embed = discord.Embed(title="上記、リマインドします")
-        embed.add_field(
-            name="詳細",
-            value=f"ID : {message_id} by : {auth} 経過時間 : {elapsed_time} progress : {reaction_sum}/{reaction_cnt}\n{url}",
-            inline=False)
-        embed.set_footer(text=f"対象の役職 : {roles_name} ID : {message_id}")
+                auth = self.return_member_or_role(guild, reaction.author_id)
+                reaction_sum = reaction.target_value
+                reaction_cnt = reaction.sum
 
-        await channel.send(f"{roles_mention}")
-        await channel.send(embed=embed)
+                embed = discord.Embed(title="上記、リマインドします")
+                embed.add_field(
+                    name="詳細",
+                    value=f"ID : {reaction.message_id} by : {auth}\nprogress : {reaction_sum}/{reaction_cnt} [link.]({url})",
+                    inline=False)
+                embed.set_footer(
+                    text=f"対象 : {roles_name}")
 
-        self.reaction_dict[message_id]['reminded'] = 1
-        # self.dump_json(self.reaction_dict)
+                if roles_mention != "None":
+                    await channel.send(f"{roles_mention}")
 
-    @ tasks.loop(seconds=10.0)
+                await channel.send(embed=embed)
+
+                await self.aggregation_mng.set_value_to_remind(reaction.message_id, True)
+
+                await asyncio.sleep(0.3)
+
+    async def delete_expired_aggregation(self) -> None:
+        """14日前から集計してる集計を削除する関数
+        """
+        all_aggregation = await self.aggregation_mng.get_all_aggregation()
+
+        now = datetime.now()
+
+        for reaction in all_aggregation:
+            elapsed_time = now - reaction.created_at
+            if elapsed_time.days >= 14:
+                await self.aggregation_mng.remove_aggregation(reaction.message_id)
+
+    @ tasks.loop(minutes=1.0)
     async def reaction_reminder(self) -> None:
         await self.bot.wait_until_ready()
 
         today = datetime.today()
         now_M = today.strftime('%M')
+        now_H = today.strftime('%H')
 
-        if now_M == '61':
-            for i in self.reaction_dict.keys():
-                start_time = datetime.strptime(
-                    self.reaction_dict[i]['time'], '%Y-%m-%d %H:%M:%S')
-                elapsed_time = today - start_time
-                if elapsed_time.days >= 3:
-                    await self.remind(i, elapsed_time)
+        if now_M == '00':
+            await self.delete_notified()
+            await self.remind()
 
-                await asyncio.sleep(0.3)
+            if now_H == '03':
+                pass
 
 
 def setup(bot):
