@@ -5,17 +5,14 @@ import asyncio
 import pathlib
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Union
+from typing import List, Union
 
-from sqlalchemy import delete, exc, select, update
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.schema import Column
-from sqlalchemy.sql.base import ColumnCollection
-from sqlalchemy.sql.elements import Null
-from sqlalchemy.sql.sqltypes import BOOLEAN, DATETIME, TIMESTAMP
-from sqlalchemy.types import VARCHAR, BigInteger, Integer, String
+from sqlalchemy.sql.sqltypes import BOOLEAN, DATETIME
+from sqlalchemy.types import VARCHAR, BigInteger, Integer
 
 Base = declarative_base()
 

@@ -4,16 +4,13 @@
 import asyncio
 import pathlib
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Union
 
-from sqlalchemy import delete, exc, select, update
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.schema import Column
-from sqlalchemy.types import (VARCHAR, BigInteger, Boolean, DateTime, Integer,
-                              String)
+from sqlalchemy.types import BigInteger
 
 Base = declarative_base()
 
