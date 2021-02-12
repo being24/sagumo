@@ -10,6 +10,19 @@ class CommandErrorHandler(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    @staticmethod
+    async def autodel_msg(msg: discord.Message, second: int = 5):
+        """渡されたメッセージを指定秒数後に削除する関数
+
+        Args:
+            msg (discord.Message): 削除するメッセージオブジェクト
+            second (int, optional): 秒数. Defaults to 5.
+        """
+        try:
+            await msg.delete(delay=second)
+        except discord.Forbidden:
+            pass
+
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
         """The event triggered when an error is raised while invoking a command.
@@ -23,20 +36,27 @@ class CommandErrorHandler(commands.Cog):
             return
 
         elif isinstance(error, commands.DisabledCommand):
-            return await ctx.send(f'{ctx.command} has been disabled.')
-        elif isinstance(error, commands.CheckFailure):
+            msg = await ctx.reply(f'{ctx.command} has been disabled.')
+            await self.autodel_msg(msg)
+            return
 
-            await ctx.send(f'you have no permission to execute {ctx.command}.')
+        elif isinstance(error, commands.CheckFailure):
+            await ctx.reply(f'you have no permission to execute {ctx.command}.')
             return
 
         elif isinstance(error, commands.NoPrivateMessage):
             try:
-                return await ctx.send(f'{ctx.command} can not be used in Private Messages.')
+                return await ctx.reply(f'{ctx.command} can not be used in Private Messages.')
             except discord.HTTPException:
                 print("couldn't send direct message")
 
         elif isinstance(error, commands.BadArgument):
-            return await ctx.send("無効な引数です")
+            msg = await ctx.reply("無効な引数です")
+            await self.autodel_msg(msg)
+
+        elif isinstance(error, commands.MissingRequiredArgument):
+            msg = await ctx.reply("引数が足りません")
+            await self.autodel_msg(msg)
 
         else:
             error = getattr(error, 'original', error)
