@@ -216,6 +216,21 @@ class ReactionAggregator(commands.Cog):
                              timeout=60.0)
             await menu.start(ctx)
 
+    async def change_delete_msg(self, channel_id: int, message_id: int) -> None:
+        """集計終了時元メッセージを変更する関数
+
+        Args:
+            channel_id (int): チャンネルID
+            message_id (int): メッセージID
+        """
+        channel = self.bot.get_channel(channel_id)
+        msg = await channel.fetch_message(message_id)
+        try:
+            await msg.clear_reactions()
+            await msg.edit(content="集計終了しました")
+        except discord.Forbidden:
+            pass
+
     @commands.Cog.listener()
     async def on_ready(self):
         """on_ready時に発火する関数
@@ -351,7 +366,7 @@ class ReactionAggregator(commands.Cog):
 
         await self.start_paginating(ctx, reaction_list_of_guild)
 
-    @list_reaction.command()
+    @list_reaction.command(description='現在DB上にある集計一覧を出力')
     async def all(self, ctx):
         """集計中のすべてのリアクション一覧を表示するコマンド"""
         if not await self.is_bot_manager(ctx.guild, ctx.author):
@@ -375,6 +390,7 @@ class ReactionAggregator(commands.Cog):
             if confirm:
                 await self.aggregation_mng.remove_aggregation(message_id)
                 await ctx.reply(f"ID : {message_id}は{ctx.author}により削除されました")
+                await self.change_delete_msg(ctx.channel.id, message_id)
             else:
                 notify_msg = await ctx.send(f"ID : {message_id}の削除を中止しました")
                 await self.autodel_msg(notify_msg)
@@ -459,6 +475,7 @@ class ReactionAggregator(commands.Cog):
             elapsed_time = now - reaction.notified_at
             if elapsed_time.days >= 3:
                 await self.aggregation_mng.remove_aggregation(reaction.message_id)
+                await self.change_delete_msg(reaction.channel_id, reaction.message_id)
 
     async def remind(self) -> None:
         """リマインドを行う関数
@@ -472,7 +489,7 @@ class ReactionAggregator(commands.Cog):
 
         for reaction in all_aggregation:
             elapsed_time = now - reaction.created_at
-            if elapsed_time.days >= 3:
+            if elapsed_time.days >= 1:
                 channel = self.bot.get_channel(reaction.channel_id)
                 url = self.get_msgurl_from_reaction(reaction)
                 guild = self.bot.get_guild(reaction.guild_id)
@@ -521,6 +538,7 @@ class ReactionAggregator(commands.Cog):
             elapsed_time = now - reaction.created_at
             if elapsed_time.days >= 14:
                 await self.aggregation_mng.remove_aggregation(reaction.message_id)
+                await self.change_delete_msg(reaction.channel_id, reaction.message_id)
 
     @ tasks.loop(minutes=1.0)
     async def reaction_reminder(self) -> None:
