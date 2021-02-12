@@ -11,7 +11,7 @@ RUN set -x && \
     cp /usr/share/zoneinfo/Asia/Tokyo /etc/localtime && \
     python3 -m pip install -U setuptools && \
     git clone https://github.com/being24/sagumo.git && \
-    python3 -m pip install -r ./sagumo/docker_setting/requirements.txt && \
+    python3 -m pip install -r ./sagumo/requirements.txt && \
     python -m pip install -U git+https://github.com/Rapptz/discord-ext-menus && \
     chmod 0700 ./sagumo/*.sh && \
     chmod 0700 ./sagumo/bot.py && \
