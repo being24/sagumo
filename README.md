@@ -38,3 +38,6 @@ docker run -d -v sagumo-data:/opt --env-file .env --restart=always --name=sagumo
 docker hubからpullできるようにしました
 環境変数DISCORD_BOT_TOKENからtokenを読み取ります
 自分は.envファイルに環境変数DISCORD_BOT_TOKENにtokenを定義して渡してます
+
+<https://zenn.dev/kyoh86/articles/b7f40cbfaf8bf6963854>
+<https://qiita.com/kawakawaryuryu/items/b0291c1bc1141a535263>
