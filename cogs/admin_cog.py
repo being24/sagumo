@@ -9,6 +9,7 @@ import typing
 from datetime import datetime
 
 import discord
+from discord.ext.commands.core import command
 import discosnow as ds
 from discord.ext import commands, tasks
 
@@ -28,6 +29,23 @@ class Admin(commands.Cog, name='管理用コマンド群'):
 
     async def cog_check(self, ctx):
         return ctx.guild and await self.bot.is_owner(ctx.author)
+
+    @commands.Cog.listener()
+    async def on_guild_join(self, guild):
+        """on_guild_join時に発火する関数
+        """
+        embed = discord.Embed(
+            title="サーバーに参加しました",
+            description=f"SCP-JP用utility-bot {self.bot.user.display_name}",
+            color=0x2fe48d)
+        embed.set_author(
+            name=f"{self.bot.user.name}",
+            icon_url=f"{self.bot.user.avatar_url}")
+        embed.add_field(
+            name="Tips",
+            value="はじめに `/s_init @bot管理者役職 @bot使用者役職`で各役職を登録してください",
+            inline=True)
+        await guild.system_channel.send(embed=embed)
 
     @commands.command(aliases=['re'], hidden=True)
     async def reload(self, ctx, cogname: typing.Optional[str] = "ALL"):
