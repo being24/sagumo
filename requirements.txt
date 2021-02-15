@@ -4,5 +4,5 @@ discord-sentry-reporting==2.0.4
 discord.py==1.6.0
 discosnow==0.0.4
 python-dotenv==0.15.0
-sentry-sdk==0.19.5
+sentry-sdk==0.20.1
 SQLAlchemy==1.4.0b2
