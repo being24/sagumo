@@ -14,6 +14,7 @@ from .utils.confirm import Confirm
 from .utils.reaction_aggregation_manager import (AggregationManager,
                                                  ReactionParameter)
 from .utils.setting_manager import SettingManager
+from .utils.common import CommonUtil
 
 
 def has_some_role():
@@ -117,95 +118,10 @@ class ReactionAggregator(commands.Cog):
 
         self.setting_mng = SettingManager()
         self.aggregation_mng = AggregationManager()
+        self.c = CommonUtil()
 
         if not self.bot.loop.is_running():
             self.reaction_reminder.start()
-
-    @staticmethod
-    async def autodel_msg(msg: discord.Message, second: int = 5):
-        """渡されたメッセージを指定秒数後に削除する関数
-
-        Args:
-            msg (discord.Message): 削除するメッセージオブジェクト
-            second (int, optional): 秒数. Defaults to 5.
-        """
-        try:
-            await msg.delete(delay=second)
-        except discord.Forbidden:
-            pass
-
-    @staticmethod
-    def get_msgurl_from_reaction(reaction: ReactionParameter) -> str:
-        """msgurlをリアクションから生成する関数
-
-        Args:
-            reaction (ReactionParameter): リアクションオブジェクト
-
-        Returns:
-            str: discordのURL
-        """
-        url = f'https://discord.com/channels/{reaction.guild_id}/{reaction.channel_id}/{reaction.message_id}'
-        return url
-
-    @staticmethod
-    def return_member_or_role(guild: discord.Guild,
-                              id: int) -> typing.Union[discord.Member,
-                                                       discord.Role,
-                                                       None]:
-        """メンバーか役職オブジェクトを返す関数
-
-        Args:
-            guild (discord.guild): discordのguildオブジェクト
-            id (int): 役職かメンバーのID
-
-        Returns:
-            typing.Union[discord.Member, discord.Role]: discord.Memberかdiscord.Role
-        """
-        user_or_role = guild.get_role(id)
-        if user_or_role is None:
-            user_or_role = guild.get_member(id)
-
-        return user_or_role
-
-    async def is_bot_user(self, guild: discord.Guild, command_user: discord.Member) -> bool:
-        """そのサーバーのBOT_user役職を持っているか判定する関数
-
-        Args:
-            guild (discord.Guild): サーバーのギルドオブジェクト
-            command_user (discord.Member): コマンド使用者のメンバーオブジェクト
-
-        Returns:
-            bool: 入ってたらTrue、入ってなかったらFalse
-
-        Memo:
-            管理者は使用者の権限も持つことにする
-        """
-        guild_DB = await self.setting_mng.get_guild(guild.id)
-        bot_user_role = guild.get_role(guild_DB.bot_user_id)
-        bot_manager_role = guild.get_role(guild_DB.bot_manager_id)
-
-        if any([role in command_user.roles for role in [
-               bot_manager_role, bot_user_role]]):
-            return True
-        else:
-            return False
-
-    async def is_bot_manager(self, guild: discord.Guild, command_user: discord.Member) -> bool:
-        """そのサーバーのBOT_manager役職を持っているか判定する関数
-
-        Args:
-            guild (discord.Guild): サーバーのギルドオブジェクト
-            command_user (discord.Member): コマンド使用者のメンバーオブジェクト
-
-        Returns:
-            bool: 入ってたらTrue、入ってなかったらFalse
-        """
-        guild_DB = await self.setting_mng.get_guild(guild.id)
-        bot_manager_role = guild.get_role(guild_DB.bot_manager_id)
-        if bot_manager_role in command_user.roles:
-            return True
-        else:
-            return False
 
     async def start_paginating(self, ctx, reaction_list_of_guild):
         if reaction_list_of_guild is None:
@@ -230,6 +146,8 @@ class ReactionAggregator(commands.Cog):
             await msg.edit(content="集計終了しました")
         except discord.Forbidden:
             pass
+        except discord.NotFound:
+            pass
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -248,10 +166,10 @@ class ReactionAggregator(commands.Cog):
             guild = self.bot.get_guild(reaction_data.guild_id)
             command_msg = await channel.fetch_message(reaction_data.command_id)
 
-            url = self.get_msgurl_from_reaction(reaction_data)
+            url = self.c.get_msgurl_from_reaction(reaction_data)
 
             roles = [
-                self.return_member_or_role(guild, id).name
+                self.c.return_member_or_role(guild, id).name
                 for id in reaction_data.ping_id]
 
             if len(roles) == 0:
@@ -291,12 +209,11 @@ class ReactionAggregator(commands.Cog):
             await ctx.reply(f'{ctx.guild}のbot管理者に{bot_manager.mention}を、bot操作者に{bot_user.mention}を設定しました')
 
     @commands.command(aliases=['cnt'], description='リアクション集計コマンド')
-    @has_some_role()
     async def count(self, ctx, target_value: int = 0, *role_or_members: typing.Union[discord.Role, discord.Member]):
         """リアクション集計を行うコマンド"""
-        if not await self.is_bot_user(ctx.guild, ctx.author):
+        if not await self.c.is_bot_user(ctx.guild, ctx.author):
             notify_msg = await ctx.send(f'{ctx.author.mention}\nコマンドの使用権限を持っていません')
-            await self.autodel_msg(notify_msg)
+            await self.c.autodel_msg(notify_msg)
             return
 
         if target_value == 0:
@@ -347,7 +264,7 @@ class ReactionAggregator(commands.Cog):
         """
         if isinstance(error, commands.BadArgument):
             notify_msg = await ctx.send(f'{ctx.author.mention}\n引数エラーです\n順番が間違っていませんか？')
-            await self.autodel_msg(notify_msg)
+            await self.c.autodel_msg(notify_msg)
         else:
             raise ValueError
 
@@ -355,9 +272,9 @@ class ReactionAggregator(commands.Cog):
                      description='集計中一覧', invoke_without_command=True)
     async def list_reaction(self, ctx):
         """集計中のリアクション一覧を表示するコマンド"""
-        if not await self.is_bot_manager(ctx.guild, ctx.author):
+        if not await self.c.is_bot_manager(ctx.guild, ctx.author):
             notify_msg = await ctx.send(f'{ctx.author.mention}\nコマンドの使用権限を持っていません')
-            await self.autodel_msg(notify_msg)
+            await self.c.autodel_msg(notify_msg)
             return
 
         reaction_list_of_guild = await self.aggregation_mng.get_guild_list(ctx.guild.id)
@@ -369,9 +286,9 @@ class ReactionAggregator(commands.Cog):
     @list_reaction.command(description='現在DB上にある集計一覧を出力')
     async def all(self, ctx):
         """集計中のすべてのリアクション一覧を表示するコマンド"""
-        if not await self.is_bot_manager(ctx.guild, ctx.author):
+        if not await self.c.is_bot_manager(ctx.guild, ctx.author):
             notify_msg = await ctx.send(f'{ctx.author.mention}\nコマンドの使用権限を持っていません')
-            await self.autodel_msg(notify_msg)
+            await self.c.autodel_msg(notify_msg)
             return
 
         reaction_list_of_guild = await self.aggregation_mng.get_guild_list(ctx.guild.id)
@@ -380,9 +297,9 @@ class ReactionAggregator(commands.Cog):
     @ commands.command(aliases=['rm'], description='集計を中止するコマンド')
     async def remove(self, ctx, message_id: int):
         """DBから情報を削除し、集計を中止するコマンド"""
-        if not await self.is_bot_manager(ctx.guild, ctx.author):
+        if not await self.c.is_bot_manager(ctx.guild, ctx.author):
             notify_msg = await ctx.send(f'{ctx.author.mention}\nコマンドの使用権限を持っていません')
-            await self.autodel_msg(notify_msg)
+            await self.c.autodel_msg(notify_msg)
             return
 
         if await self.aggregation_mng.is_exist(message_id):
@@ -393,10 +310,10 @@ class ReactionAggregator(commands.Cog):
                 await self.change_delete_msg(ctx.channel.id, message_id)
             else:
                 notify_msg = await ctx.send(f"ID : {message_id}の削除を中止しました")
-                await self.autodel_msg(notify_msg)
+                await self.c.autodel_msg(notify_msg)
         else:
             notify_msg = await ctx.send(f"ID : {message_id}はリアクション集計対象ではありません")
-            await self.autodel_msg(notify_msg)
+            await self.c.autodel_msg(notify_msg)
 
     @ commands.Cog.listener()
     async def on_raw_reaction_add(self, reaction):
@@ -432,10 +349,6 @@ class ReactionAggregator(commands.Cog):
                 await self.aggregation_mng.set_value_to_sum(message_id=message_id, val=reaction_data.sum + 1)
 
             await self.judge_and_notice(message_id)
-
-    @ commands.command()
-    async def test(self, reaction):
-        await self.remind()
 
     @ commands.Cog.listener()
     async def on_raw_reaction_remove(self, reaction):
@@ -491,11 +404,11 @@ class ReactionAggregator(commands.Cog):
             elapsed_time = now - reaction.created_at
             if elapsed_time.days >= 1:
                 channel = self.bot.get_channel(reaction.channel_id)
-                url = self.get_msgurl_from_reaction(reaction)
+                url = self.c.get_msgurl_from_reaction(reaction)
                 guild = self.bot.get_guild(reaction.guild_id)
 
                 roles = [
-                    self.return_member_or_role(
+                    self.c.return_member_or_role(
                         guild, id) for id in reaction.ping_id]
 
                 if len(roles) == 0:
@@ -506,7 +419,7 @@ class ReactionAggregator(commands.Cog):
                         [member.mention for member in roles])
                     roles_name = ' '.join([member.name for member in roles])
 
-                auth = self.return_member_or_role(guild, reaction.author_id)
+                auth = self.c.return_member_or_role(guild, reaction.author_id)
                 reaction_sum = reaction.target_value
                 reaction_cnt = reaction.sum
 
