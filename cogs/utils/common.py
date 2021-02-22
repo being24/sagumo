@@ -101,3 +101,35 @@ class CommonUtil():
             user_or_role = guild.get_member(id)
 
         return user_or_role
+
+    async def has_bot_user(self, ctx) -> bool:
+        """BOT使用者であるか？
+
+        Args:
+            ctx ([type]): いつもの
+
+        Returns:
+            bool: 使用者ならTそうでなければF
+        """
+        if not await self.is_bot_user(ctx.guild, ctx.author):
+            notify_msg = await ctx.send(f'{ctx.author.mention}\nコマンドの使用権限を持っていません')
+            await self.autodel_msg(notify_msg)
+            return False
+        else:
+            return True
+
+    async def has_bot_manager(self, ctx) -> bool:
+        """BOT管理者であるか？
+
+        Args:
+            ctx ([type]): いつもの
+
+        Returns:
+            bool: 管理者ならTそうでなければF
+        """
+        if not await self.is_bot_manager(ctx.guild, ctx.author):
+            notify_msg = await ctx.send(f'{ctx.author.mention}\nコマンドの使用権限を持っていません')
+            await self.autodel_msg(notify_msg)
+            return False
+        else:
+            return True
