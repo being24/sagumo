@@ -11,6 +11,7 @@ from discord.ext.menus import ListPageSource, MenuPages
 
 from .utils.common import CommonUtil
 from .utils.setting_manager import SettingManager
+from .utils.polling_manager import PollingManager, PollingParameter
 
 
 class Polling(commands.Cog):
@@ -18,6 +19,7 @@ class Polling(commands.Cog):
         self.bot = bot
         self.setting_mng = SettingManager()
         self.c = CommonUtil()
+        self.polling_mng = PollingManager()
 
         self.o = '\N{HEAVY LARGE CIRCLE}'
         self.x = '\N{CROSS MARK}'
@@ -26,26 +28,31 @@ class Polling(commands.Cog):
         self.finish = '\N{WHITE HEAVY CHECK MARK}'
 
         if not self.bot.loop.is_running():
-            pass
-            # self.reaction_reminder.start()
+            self.polling_timer.start()
 
     @commands.Cog.listener()
     async def on_ready(self):
         """on_ready時に発火する関数
         """
         await self.setting_mng.create_table()
+        await self.polling_mng.create_table()
 
-    @commands.command()
+    @commands.command(description='投票を実施')
     async def poll(self, ctx, question: str, *choices_or_user_role: typing.Union[discord.Member, discord.Role, str]):
+        """投票を行うコマンド.内容だけ投稿すれば賛成反対の二択に、選択肢も入れればその投票になります.\nユーザーと役職のメンションを入れるとその役職に限定できます.チェックを押すと集計します."""
         async with ctx.typing():
-            if not await self.c.is_bot_user(ctx.guild, ctx.author):
-                notify_msg = await ctx.send(f'{ctx.author.mention}\nコマンドの使用権限を持っていません')
-                await self.c.autodel_msg(notify_msg)
+            if not await self.c.has_bot_user(ctx):
                 return
 
             now = datetime.now()
+            user_roles_id = []
 
-            if len(choices_or_user_role) == 0:
+            choices = [i for i in choices_or_user_role
+                       if isinstance(i, str)]
+            user_roles = [i for i in choices_or_user_role
+                          if not isinstance(i, str)]
+
+            if len(choices) == 0:
                 embed = discord.Embed(title=f"{question}", color=0x37d2c0)
                 embed.set_footer(
                     text=f"created_at : {now.strftime('%Y/%m/%d %H:%M')} , created_by : {ctx.author}")
@@ -55,11 +62,6 @@ class Polling(commands.Cog):
                 await msg.add_reaction(self.finish)
 
             else:
-                choices = [i for i in choices_or_user_role
-                           if isinstance(i, str)]
-                user_roles = [i for i in choices_or_user_role
-                              if not isinstance(i, str)]
-
                 if len(choices) > 10:
                     await ctx.reply("選択肢は9個以下にしてください")
                     return
@@ -85,6 +87,82 @@ class Polling(commands.Cog):
                 for num in range(len(choices)):
                     await msg.add_reaction(self.num_emoji_list[num])
                 await msg.add_reaction(self.finish)
+
+            user_roles_id = [user_role.id for user_role in user_roles]
+
+            data = PollingParameter(
+                message_id=msg.id,
+                author_id=ctx.author.id,
+                channel_id=ctx.channel.id,
+                allow_list=user_roles_id)
+
+            await self.polling_mng.register_polling(data)
+
+    @ commands.Cog.listener()
+    async def on_raw_reaction_add(self, reaction):
+        if reaction.member.bot:
+            return
+        if polling_data := await self.polling_mng.get_aggregation(reaction.message_id):
+            member_role_ids = [role.id for role in reaction.member.roles]
+            member_role_ids.append(reaction.user_id)
+            channel = self.bot.get_channel(reaction.channel_id)
+
+            if len(polling_data.allow_list) == 0:
+                pass
+            elif len(set(polling_data.allow_list) & set(member_role_ids)) == 0:
+                msg = await channel.fetch_message(reaction.message_id)
+                try:
+                    await msg.remove_reaction(str(reaction.emoji), reaction.member)
+                except discord.Forbidden:
+                    await channel.send('リアクションの除去に失敗しました.')
+                notify_msg = await channel.send(f"{reaction.member.mention} 権限無しのリアクションは禁止です！")
+                # await self.autodel_msg(notify_msg)
+                return
+
+            msg = await channel.fetch_message(reaction.message_id)
+            result = ''
+
+            if reaction.emoji.name == self.finish and polling_data.author_id == reaction.member.id:
+                for added_reaction in msg.reactions:
+                    if not added_reaction.emoji == self.finish:
+                        result += f"{added_reaction}:{added_reaction.count - 1}\n"
+
+                embed = msg.embeds[0].add_field(
+                    name="結果",
+                    value=f"{result}",
+                    inline=False)
+                await msg.edit(embed=embed)
+                await msg.clear_reactions()
+
+                await self.polling_mng.remove_aggregation(reaction.message_id)
+
+    async def delete_expired_aggregation(self) -> None:
+        """30日前から集計してる投票を削除する関数
+        """
+        all_aggregation = await self.polling_mng.get_all_aggregation()
+
+        if all_aggregation is None:
+            return
+
+        now = datetime.now()
+
+        for reaction in all_aggregation:
+            elapsed_time = now - reaction.created_at
+            if elapsed_time.days >= 30:
+                await self.polling_mng.remove_aggregation(reaction.message_id)
+                channel = self.bot.get_channel(reaction.channel_id)
+                msg = await channel.fetch_message(reaction.message_id)
+                await msg.clear_reactions()
+
+    @ tasks.loop(minutes=1.0)
+    async def polling_timer(self) -> None:
+        await self.bot.wait_until_ready()
+
+        today = datetime.today()
+        minutes = today.strftime('%M')
+
+        if minutes == '30':
+            await self.delete_expired_aggregation()
 
 
 def setup(bot):
