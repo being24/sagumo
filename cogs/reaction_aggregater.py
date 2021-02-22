@@ -211,9 +211,7 @@ class ReactionAggregator(commands.Cog):
     @commands.command(aliases=['cnt'], description='リアクション集計コマンド')
     async def count(self, ctx, target_value: int = 0, *role_or_members: typing.Union[discord.Role, discord.Member]):
         """リアクション集計を行うコマンド"""
-        if not await self.c.is_bot_user(ctx.guild, ctx.author):
-            notify_msg = await ctx.send(f'{ctx.author.mention}\nコマンドの使用権限を持っていません')
-            await self.c.autodel_msg(notify_msg)
+        if not await self.c.has_bot_user(ctx):
             return
 
         if target_value == 0:
@@ -272,9 +270,7 @@ class ReactionAggregator(commands.Cog):
                      description='集計中一覧', invoke_without_command=True)
     async def list_reaction(self, ctx):
         """集計中のリアクション一覧を表示するコマンド"""
-        if not await self.c.is_bot_manager(ctx.guild, ctx.author):
-            notify_msg = await ctx.send(f'{ctx.author.mention}\nコマンドの使用権限を持っていません')
-            await self.c.autodel_msg(notify_msg)
+        if not await self.c.has_bot_manager(ctx):
             return
 
         reaction_list_of_guild = await self.aggregation_mng.get_guild_list(ctx.guild.id)
@@ -286,9 +282,7 @@ class ReactionAggregator(commands.Cog):
     @list_reaction.command(description='現在DB上にある集計一覧を出力')
     async def all(self, ctx):
         """集計中のすべてのリアクション一覧を表示するコマンド"""
-        if not await self.c.is_bot_manager(ctx.guild, ctx.author):
-            notify_msg = await ctx.send(f'{ctx.author.mention}\nコマンドの使用権限を持っていません')
-            await self.c.autodel_msg(notify_msg)
+        if not await self.c.has_bot_manager(ctx):
             return
 
         reaction_list_of_guild = await self.aggregation_mng.get_guild_list(ctx.guild.id)
@@ -297,9 +291,7 @@ class ReactionAggregator(commands.Cog):
     @ commands.command(aliases=['rm'], description='集計を中止するコマンド')
     async def remove(self, ctx, message_id: int):
         """DBから情報を削除し、集計を中止するコマンド"""
-        if not await self.c.is_bot_manager(ctx.guild, ctx.author):
-            notify_msg = await ctx.send(f'{ctx.author.mention}\nコマンドの使用権限を持っていません')
-            await self.c.autodel_msg(notify_msg)
+        if not await self.c.has_bot_user(ctx):
             return
 
         if await self.aggregation_mng.is_exist(message_id):
@@ -402,7 +394,7 @@ class ReactionAggregator(commands.Cog):
 
         for reaction in all_aggregation:
             elapsed_time = now - reaction.created_at
-            if elapsed_time.days >= 1:
+            if elapsed_time.total_seconds() >= 6 * 3600:
                 channel = self.bot.get_channel(reaction.channel_id)
                 url = self.c.get_msgurl_from_reaction(reaction)
                 guild = self.bot.get_guild(reaction.guild_id)
@@ -445,6 +437,9 @@ class ReactionAggregator(commands.Cog):
         """
         all_aggregation = await self.aggregation_mng.get_all_aggregation()
 
+        if all_aggregation is None:
+            return
+
         now = datetime.now()
 
         for reaction in all_aggregation:
@@ -458,15 +453,11 @@ class ReactionAggregator(commands.Cog):
         await self.bot.wait_until_ready()
 
         today = datetime.today()
-        now_M = today.strftime('%M')
-        now_H = today.strftime('%H')
+        minutes = today.strftime('%M')
 
-        if now_M == '00':
+        if minutes == '00':
             await self.delete_notified()
             await self.remind()
-
-            if now_H == '03':
-                pass
 
 
 def setup(bot):
