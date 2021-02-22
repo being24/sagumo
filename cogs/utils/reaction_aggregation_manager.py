@@ -250,6 +250,20 @@ class AggregationManager():
                     notified_at=notified_time)
                 await session.execute(stmt)
 
+    async def unset_value_to_notified(self, message_id: int) -> None:
+        """通知時刻をアンセットする関数
+
+        Args:
+            message_id (int): メッセージID
+            notified_time (datetime): 値
+        """
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                stmt = update(ReactionAggregation).where(
+                    ReactionAggregation.message_id == message_id).values(
+                    notified_at=None)
+                await session.execute(stmt)
+
     async def set_value_to_remind(self, message_id: int, value: bool) -> None:
         """リマインドされたかをセットする関数
 

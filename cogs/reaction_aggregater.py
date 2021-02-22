@@ -274,8 +274,17 @@ class ReactionAggregator(commands.Cog):
             return
 
         reaction_list_of_guild = await self.aggregation_mng.get_guild_list(ctx.guild.id)
+
+        if reaction_list_of_guild is None:
+            await ctx.send("集計中のリアクションはありません")
+            return
+
         reaction_list_of_guild = [
             reaction for reaction in reaction_list_of_guild if reaction.notified_at is None]
+
+        if len(reaction_list_of_guild) == 0:
+            await ctx.send("集計中のリアクションはありません")
+            return
 
         await self.start_paginating(ctx, reaction_list_of_guild)
 
@@ -362,6 +371,7 @@ class ReactionAggregator(commands.Cog):
                 msg = await channel.fetch_message(reaction.message_id)
                 await msg.edit(content=msg.content.replace("\n待ちます", "", 1))
             else:
+                await self.aggregation_mng.unset_value_to_notified(message_id=message_id)
                 await self.aggregation_mng.set_value_to_sum(message_id=message_id, val=reaction_data.sum - 1)
 
             await self.judge_and_notice(message_id)
