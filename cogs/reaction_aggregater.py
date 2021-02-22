@@ -90,10 +90,16 @@ class ReactionList(ListPageSource):
 
             reaction_author = self.ctx.guild.get_member(reaction.author_id)
 
+            if target == "":
+                val = f"**ID** : {reaction.message_id} by : {reaction_author.mention} progress : {reaction.sum}/{reaction.target_value}{matte}\n\
+                        time : {time} [link.]({url})"
+            else:
+                val = f"**ID** : {reaction.message_id} by : {reaction_author.mention} progress : {reaction.sum}/{reaction.target_value}{matte}\n\
+                        target: {target} time : {time} [link.]({url})"
+
             embed.add_field(
                 name=f"{num+offset}番目",
-                value=f"**ID** : {reaction.message_id} by : {reaction_author.mention} progress : {reaction.sum}/{reaction.target_value}{matte}\n\
-                    target : {target} time : {time} [link.]({url})",
+                value=f"{val}",
                 inline=False)
 
         return embed
