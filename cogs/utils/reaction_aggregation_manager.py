@@ -11,6 +11,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.schema import Column
+from sqlalchemy.sql.elements import Null
 from sqlalchemy.sql.sqltypes import BOOLEAN, DATETIME
 from sqlalchemy.types import VARCHAR, BigInteger, Integer
 
@@ -29,7 +30,7 @@ class ReactionParameter:
     author_id: int
     created_at: datetime
     notified_at: datetime
-    remind: bool
+    remind: int
     ping_id: list
 
 
@@ -46,7 +47,7 @@ class ReactionAggregation(Base):
     author_id = Column(BigInteger, nullable=False)  # 集めてる人のID
     created_at = Column(DATETIME, nullable=False)  # 集計開始時間
     notified_at = Column(DATETIME)  # 集計完了時間
-    remind = Column(BOOLEAN, default=False)  # リマインドしたかどうか？
+    remind = Column(Integer, default=None)  # リマインドしたかどうか？
     ping_id = Column(VARCHAR, default='')  # メンション先のID
 
 
@@ -264,12 +265,12 @@ class AggregationManager():
                     notified_at=None)
                 await session.execute(stmt)
 
-    async def set_value_to_remind(self, message_id: int, value: bool) -> None:
+    async def set_value_to_remind(self, message_id: int, value: int) -> None:
         """リマインドされたかをセットする関数
 
         Args:
             message_id (int): メッセージID
-            value (bool): 値
+            value (int): 値
         """
         async with AsyncSession(self.engine) as session:
             async with session.begin():
@@ -307,7 +308,7 @@ class AggregationManager():
         async with AsyncSession(self.engine) as session:
             async with session.begin():
                 stmt = select(ReactionAggregation).where(
-                    ReactionAggregation.remind.is_(False)).order_by(
+                    ReactionAggregation.remind.is_(Null)).order_by(
                     ReactionAggregation.guild_id)
                 result = await session.execute(stmt)
                 result = result.fetchall()
