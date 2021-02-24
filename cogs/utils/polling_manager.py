@@ -149,6 +149,26 @@ class PollingManager():
         else:
             return result
 
+    async def is_exist(self, message_id: int) -> bool:
+        """引数のメッセージIDが待機中かを判定する関数
+
+        Args:
+            guild_id (int): サーバーID
+
+        Returns:
+            bool: あったらTrue、なかったらFalse
+        """
+        async with AsyncSession(self.engine) as session:
+            async with session.begin():
+                stmt = select(PollingObj).where(
+                    PollingObj.message_id == message_id)
+                result = await session.execute(stmt)
+                result = result.fetchone()
+                if result is not None:
+                    return True
+                else:
+                    return False
+
 
 if __name__ == "__main__":
     polling_mng = PollingManager()
