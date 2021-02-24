@@ -33,7 +33,6 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
 
       - name: create secret_key
-        uses: actions/checkout@v2
         env:
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
         run: |
