@@ -1,0 +1,23 @@
+name: Deploy to EC2  
+# masterにpushされた時にjobを実行する
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: test
+    # 保存したシークレットたちを環境変数に設定
+    env:
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      EC2_USER: ${{ secrets.USER_NAME }}
+      EC2_HOST: ${{ secrets.LIGHTSAIL_IP_ADDR }}
+      run: 
+        # 秘密鍵にファイル名secret_keyをつける
+        echo "$SECRET_KEY" > secret_key
+        # パーミッションの変更    
+        chmod 600 secret_key
+        # ssh接続　＞　デプロイするディレクトリに行く　＞　デプロイ
+        ssh -oStrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} -i secret_key "cd ~/test && git pull origin master"
