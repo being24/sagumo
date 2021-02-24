@@ -43,7 +43,7 @@ SCPJP discord用のリアクション集計bot(読みは気にしない方針で
 ## メモ
 
 ``` sh
-docker pull being241/sagumo
+docker pull ghcr.io/being24/sagumo:latest
 docker run -d -v sagumo-data:/opt --env-file .env --restart=always --name=sagumo being241/sagumo
 ```
 
