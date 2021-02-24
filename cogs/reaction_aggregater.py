@@ -17,13 +17,6 @@ from .utils.setting_manager import SettingManager
 from .utils.common import CommonUtil
 
 
-def has_some_role():
-    async def predicate(ctx):
-        if len(ctx.author.roles) > 1:
-            return True
-    return commands.check(predicate)
-
-
 class ReactionList(ListPageSource):
     def __init__(self, ctx, data):
         self.ctx = ctx
@@ -196,23 +189,6 @@ class ReactionAggregator(commands.Cog):
             embed.set_footer(text=f"target : {roles}")
 
             await command_msg.reply(embed=embed)
-            # けすのは集計完了してから数日後？
-
-    @commands.command(aliases=['s_init'], description='沙雲の管理用役職を登録するコマンド')
-    async def sagumo_initialization(self, ctx, bot_manager: discord.Role, bot_user: discord.Role):
-        """管理用役職:bot管理者とbot使用者を登録するコマンド、順番注意"""
-        if await self.setting_mng.is_exist(ctx.guild.id):
-            await self.setting_mng.update_guild(
-                guild_id=ctx.guild.id,
-                bot_manager_id=bot_manager.id,
-                bot_user_id=bot_user.id)
-            await ctx.reply(f'{ctx.guild}のbot管理者に{bot_manager.mention}を、bot操作者に{bot_user.mention}に更新しました', mention_author=False)
-        else:
-            await self.setting_mng.register_guild(
-                guild_id=ctx.guild.id,
-                bot_manager_id=bot_manager.id,
-                bot_user_id=bot_user.id)
-            await ctx.reply(f'{ctx.guild}のbot管理者に{bot_manager.mention}を、bot操作者に{bot_user.mention}を設定しました')
 
     @commands.command(aliases=['cnt'], description='リアクション集計コマンド')
     async def count(self, ctx, target_value: int = 0, *role_or_members: typing.Union[discord.Role, discord.Member]):
@@ -399,9 +375,11 @@ class ReactionAggregator(commands.Cog):
                 await self.change_delete_msg(reaction.channel_id, reaction.message_id)
 
     async def remind(self) -> None:
-        """リマインドを行う関数
-        """
-        all_aggregation = await self.aggregation_mng.get_all_not_reminded_aggregation()
+        """リマインドを行う関数"""
+
+        # 12h, 24h, 以後24h間隔が個人的には理想です
+
+        all_aggregation = await self.aggregation_mng.get_all_aggregation()
 
         if all_aggregation is None:
             return
@@ -410,43 +388,45 @@ class ReactionAggregator(commands.Cog):
 
         for reaction in all_aggregation:
             elapsed_time = now - reaction.created_at
-            if elapsed_time.total_seconds() >= 6 * 3600:
-                channel = self.bot.get_channel(reaction.channel_id)
-                url = self.c.get_msgurl_from_reaction(reaction)
-                guild = self.bot.get_guild(reaction.guild_id)
+            if elapsed_time.total_seconds() >= 12 * 3600 and reaction.remind is None:
+                await self.send_remind(reaction, elapsed_time.days)
+            elif elapsed_time.days != reaction.remind:
+                await self.send_remind(reaction, reaction.remind + 1)
 
-                roles = [
-                    self.c.return_member_or_role(
-                        guild, id) for id in reaction.ping_id]
+    async def send_remind(self, reaction: ReactionParameter, val: int) -> None:
+        """リマインドを送信する関数
 
-                if len(roles) == 0:
-                    roles_mention = 'None'
-                    roles_name = 'None'
-                else:
-                    roles_mention = ' '.join(
-                        [member.mention for member in roles])
-                    roles_name = ' '.join([member.name for member in roles])
-
-                auth = self.c.return_member_or_role(guild, reaction.author_id)
-                reaction_sum = reaction.target_value
-                reaction_cnt = reaction.sum
-
-                embed = discord.Embed(title="上記、リマインドします")
-                embed.add_field(
-                    name="詳細",
-                    value=f"ID : {reaction.message_id} by : {auth}\nprogress : {reaction_sum}/{reaction_cnt} [link.]({url})",
-                    inline=False)
-                embed.set_footer(
-                    text=f"対象 : {roles_name}")
-
-                if roles_mention != "None":
-                    await channel.send(f"{roles_mention}")
-
-                await channel.send(embed=embed)
-
-                await self.aggregation_mng.set_value_to_remind(reaction.message_id, True)
-
-                await asyncio.sleep(0.3)
+        Args:
+            reaction (ReactionParameter): リアクション集計
+        """
+        channel = self.bot.get_channel(reaction.channel_id)
+        url = self.c.get_msgurl_from_reaction(reaction)
+        guild = self.bot.get_guild(reaction.guild_id)
+        roles = [
+            self.c.return_member_or_role(
+                guild, id) for id in reaction.ping_id]
+        if len(roles) == 0:
+            roles_mention = 'None'
+            roles_name = 'None'
+        else:
+            roles_mention = ' '.join(
+                [member.mention for member in roles])
+            roles_name = ' '.join([member.name for member in roles])
+        auth = self.c.return_member_or_role(guild, reaction.author_id)
+        reaction_sum = reaction.target_value
+        reaction_cnt = reaction.sum
+        embed = discord.Embed(title="上記、リマインドします")
+        embed.add_field(
+            name="詳細",
+            value=f"ID : {reaction.message_id} by : {auth}\nprogress : {reaction_sum}/{reaction_cnt} [link.]({url})",
+            inline=False)
+        embed.set_footer(
+            text=f"対象 : {roles_name}")
+        if roles_mention != "None":
+            await channel.send(f"{roles_mention}")
+        await channel.send(embed=embed)
+        await self.aggregation_mng.set_value_to_remind(reaction.message_id, val)
+        await asyncio.sleep(0.3)
 
     async def delete_expired_aggregation(self) -> None:
         """14日前から集計してる集計を削除する関数

@@ -8,37 +8,37 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Union
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.schema import Column
-from sqlalchemy.sql.sqltypes import BOOLEAN, DATETIME
-from sqlalchemy.types import VARCHAR, BigInteger, Integer
+from sqlalchemy.sql.sqltypes import Boolean, DATETIME
+from sqlalchemy.types import VARCHAR, BigInteger
 
 Base = declarative_base()
 
 
 @dataclass
-class PollingParameter:
+class TweetParameter:
     message_id: int
     channel_id: int
     author_id: int
     created_at: datetime = dataclasses.field(
         default_factory=datetime.now, init=False)
-    allow_list: list
+    content: str
 
 
-class PollingObj(Base):
-    __tablename__ = 'pollingaggregation'
+class TweetObj(Base):
+    __tablename__ = 'tweetqueue'
 
     message_id = Column(BigInteger, primary_key=True)  # メッセージID
     channel_id = Column(BigInteger, nullable=False)  # チャンネルID
     author_id = Column(BigInteger, nullable=False)  # 集めてる人のID
     created_at = Column(DATETIME, nullable=False)  # 集計開始時間
-    allow_list = Column(VARCHAR, default='')  # メンション先のID
+    content = Column(VARCHAR, default='')  # 内容
 
 
-class PollingManager():
+class TweetManager():
     def __init__(self):
         data_path = pathlib.Path(__file__).parents[1]
         data_path /= '../data'
@@ -49,68 +49,57 @@ class PollingManager():
             f'sqlite:///{db_path}', echo=True)
 
     @staticmethod
-    def return_dataclass(db_data) -> PollingParameter:
+    def return_dataclass(db_data: TweetObj) -> TweetParameter:
         """DBからの情報をデータクラスに変換する関数、もうちょっとなんとかならんか？？？
 
         Args:
             db_data (sqlalchemyの): DBから取り出したデータ
 
         Returns:
-            PollingParameter: データクラス
+            TweetParameter: データクラス
         """
 
-        '''
-        ping_id_list = []
-        guild_id_list_str = guild[0].ping_id.split(',')
-        for guild_id_str in guild_id_list_str:
-            if guild_id_str != '':
-                id = int(guild_id_str)
-                ping_id_list.append(id)
-        '''
-        allow_list = [
-            int(id) for id in db_data[0].allow_list.split(',') if id != '']
-        db_data_raw = PollingParameter(
+        db_data_raw = TweetParameter(
             message_id=db_data[0].message_id,
             author_id=db_data[0].author_id,
             channel_id=db_data[0].channel_id,
-            allow_list=allow_list)
+            content=db_data[0].content)
         return db_data_raw
 
     async def create_table(self):
         async with self.engine.begin() as conn:
-            await conn.run_sync(PollingObj.metadata.create_all)
+            await conn.run_sync(TweetObj.metadata.create_all)
 
-    async def register_polling(self, data: PollingParameter) -> None:
-        """投票の情報を登録するコマンド
+    async def register_tweetdata(self, data: TweetParameter) -> None:
+        """ツイートのキューを登録するコマンド
 
         Args:
-            data (PollingParameter): 投票のデータ
+            data (TweetParameter): ツイートのデータ
         """
         async with AsyncSession(self.engine) as session:
             async with session.begin():
-                allow_list = ",".join([str(id) for id in data.allow_list])
-                new_aggregation = PollingObj(
+                new_queue = TweetObj(
                     message_id=data.message_id,
                     author_id=data.author_id,
                     channel_id=data.channel_id,
                     created_at=data.created_at,
-                    allow_list=allow_list)
+                    content=data.content)
 
-                session.add(new_aggregation)
+                session.add(new_queue)
 
-    async def get_aggregation(self, message_id: int) -> Union[None, PollingParameter]:
-        """メッセージIDから集計中の情報を返す関数
+    async def get_tweetdata(self, message_id: int) -> Union[None, TweetParameter]:
+        """メッセージIDからキューの情報を返す関数
 
         Args:
             message_id (int): 対象のメッセージID
 
         Returns:
-            Union[None, PollingParameter]: あれば情報、なければNone
+            Union[None, TweetParameter]: あれば情報、なければNone
         """
         async with AsyncSession(self.engine) as session:
             async with session.begin():
-                stmt = select(PollingObj).where(
-                    PollingObj.message_id == message_id)
+                stmt = select(TweetObj).where(
+                    TweetObj.message_id == message_id)
                 result = await session.execute(stmt)
                 result = result.fetchone()
                 if result is None:
@@ -118,27 +107,27 @@ class PollingManager():
                 else:
                     return self.return_dataclass(result)
 
-    async def remove_aggregation(self, message_id: int) -> None:
-        """リアクション集計を削除するコマンド
+    async def remove_tweetdata(self, message_id: int) -> None:
+        """キューを削除するコマンド
 
         Args:
             message_id (int): メッセージID
         """
         async with AsyncSession(self.engine) as session:
             async with session.begin():
-                stmt = delete(PollingObj).where(
-                    PollingObj.message_id == message_id)
+                stmt = delete(TweetObj).where(
+                    TweetObj.message_id == message_id)
                 await session.execute(stmt)
 
-    async def get_all_aggregation(self) -> Union[None, List[PollingParameter]]:
-        """すべてのリアクション集計ギルドID順で取得する関数
+    async def get_all_tweetdata(self) -> Union[None, List[TweetParameter]]:
+        """すべてのキューを取得する関数
 
         Returns:
-            Union[None, List[ReactionParameter]]: なければNone、あったらリスト
+            Union[None, List[TweetParameter]]: なければNone、あったらリスト
         """
         async with AsyncSession(self.engine) as session:
             async with session.begin():
-                stmt = select(PollingObj)
+                stmt = select(TweetObj)
                 result = await session.execute(stmt)
                 result = result.fetchall()
                 result = [self.return_dataclass(poll)
@@ -160,8 +149,8 @@ class PollingManager():
         """
         async with AsyncSession(self.engine) as session:
             async with session.begin():
-                stmt = select(PollingObj).where(
-                    PollingObj.message_id == message_id)
+                stmt = select(TweetObj).where(
+                    TweetObj.message_id == message_id)
                 result = await session.execute(stmt)
                 result = result.fetchone()
                 if result is not None:
@@ -171,13 +160,17 @@ class PollingManager():
 
 
 if __name__ == "__main__":
-    polling_mng = PollingManager()
+    polling_mng = TweetManager()
     result = asyncio.run(polling_mng.create_table())
 
     now = datetime.now()
 
-    test = PollingParameter(message_id=124, author_id=123, created_at=now)
-    print(asyncio.run(polling_mng.get_aggregation(123)))
+    test = TweetParameter(
+        message_id=12334,
+        channel_id=123,
+        author_id=123,
+        content='hoge')
+    print(asyncio.run(polling_mng.register_tweetdata(test)))
 
     # for i in result:
     #    print(i)

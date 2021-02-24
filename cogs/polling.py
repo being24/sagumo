@@ -132,7 +132,7 @@ class Polling(commands.Cog):
                     value=f"{result}",
                     inline=False)
                 await msg.edit(embed=embed)
-                await msg.clear_reactions()
+                # await msg.clear_reactions()
 
                 await self.polling_mng.remove_aggregation(reaction.message_id)
 
@@ -154,15 +154,11 @@ class Polling(commands.Cog):
                 msg = await channel.fetch_message(reaction.message_id)
                 await msg.clear_reactions()
 
-    @ tasks.loop(minutes=1.0)
+    @ tasks.loop(hours=12.0)
     async def polling_timer(self) -> None:
         await self.bot.wait_until_ready()
 
-        today = datetime.today()
-        minutes = today.strftime('%M')
-
-        if minutes == '30':
-            await self.delete_expired_aggregation()
+        await self.delete_expired_aggregation()
 
 
 def setup(bot):

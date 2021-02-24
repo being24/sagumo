@@ -47,7 +47,7 @@ class HelpMenu(ListPageSource):
 
     async def format_page(self, menu, entries):
         fields = []
-
+        entries = sorted(entries, key=lambda x: x.cog_name.lower())
         for entry in entries:
             fields.append(
                 (entry.description or "No Description", syntax(entry)))
