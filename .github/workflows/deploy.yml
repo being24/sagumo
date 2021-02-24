@@ -18,5 +18,4 @@ jobs:
         # 秘密鍵にファイル名secret_keyをつける
         echo "$SECRET_KEY" > secret_key
         chmod 600 secret_key
-        # ssh接続　＞　デプロイするディレクトリに行く　＞　デプロイ
         ssh -oStrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} -i secret_key "cd ~/test && git pull origin master"
