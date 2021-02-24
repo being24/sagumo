@@ -17,13 +17,6 @@ from .utils.setting_manager import SettingManager
 from .utils.common import CommonUtil
 
 
-def has_some_role():
-    async def predicate(ctx):
-        if len(ctx.author.roles) > 1:
-            return True
-    return commands.check(predicate)
-
-
 class ReactionList(ListPageSource):
     def __init__(self, ctx, data):
         self.ctx = ctx
@@ -196,22 +189,6 @@ class ReactionAggregator(commands.Cog):
             embed.set_footer(text=f"target : {roles}")
 
             await command_msg.reply(embed=embed)
-
-    @commands.command(aliases=['s_init'], description='沙雲の管理用役職を登録するコマンド')
-    async def sagumo_initialization(self, ctx, bot_manager: discord.Role, bot_user: discord.Role):
-        """管理用役職:bot管理者とbot使用者を登録するコマンド、順番注意"""
-        if await self.setting_mng.is_exist(ctx.guild.id):
-            await self.setting_mng.update_guild(
-                guild_id=ctx.guild.id,
-                bot_manager_id=bot_manager.id,
-                bot_user_id=bot_user.id)
-            await ctx.reply(f'{ctx.guild}のbot管理者に{bot_manager.mention}を、bot操作者に{bot_user.mention}に更新しました', mention_author=False)
-        else:
-            await self.setting_mng.register_guild(
-                guild_id=ctx.guild.id,
-                bot_manager_id=bot_manager.id,
-                bot_user_id=bot_user.id)
-            await ctx.reply(f'{ctx.guild}のbot管理者に{bot_manager.mention}を、bot操作者に{bot_user.mention}を設定しました')
 
     @commands.command(aliases=['cnt'], description='リアクション集計コマンド')
     async def count(self, ctx, target_value: int = 0, *role_or_members: typing.Union[discord.Role, discord.Member]):
