@@ -9,6 +9,7 @@ SCPJP discord用のリアクション集計bot(読みは気にしない方針で
 ## 使い方
 
 ``` 
+
 /cnt 整数
 ```
 
@@ -17,35 +18,38 @@ SCPJP discord用のリアクション集計bot(読みは気にしない方針で
 リアクション可能な役職を限定したい場合は
 
 ``` 
+
 /cnt 整数 discord.Role
 ```
 
 でその役職限定にできます
 
 ``` 
+
 /ls
 ```
 
 現在集計中のリアクションを一覧表示します
 
 ``` 
+
 /remove(rm) ID
 ```
 
 指定されたIDの集計を取りやめます
 
 ``` 
+
 /clear_all
 ```
 
 全てのリアクションの集計を取りやめます
 
-## メモ
+## 使い方
 
-``` sh
-docker pull ghcr.io/being24/sagumo:latest
-docker run -d -v sagumo-data:/opt --env-file .env --restart=always --name=sagumo being241/sagumo
-```
+[update.sh](update.sh)
+
+## メモ
 
 docker hubからpullできるようにしました
 環境変数DISCORD_BOT_TOKENからtokenを読み取ります
