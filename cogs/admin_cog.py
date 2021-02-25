@@ -163,22 +163,32 @@ class Admin(commands.Cog, name='管理用コマンド群'):
 
     @tasks.loop(minutes=1.0)
     async def auto_backup(self):
-        await self.bot.wait_until_ready()
-
         now = datetime.now()
         now_HM = now.strftime('%H:%M')
 
-        if now_HM == '04:00':
+        if now_HM == '04:05':
             channel = self.bot.get_channel(745128369170939965)
 
-            SQLite_files = [
+            json_files = [
                 filename for filename in os.listdir(
                     self.master_path +
-                    "/data")if filename.endswith(".sqlite")]
+                    "/data")if filename.endswith(".json")]
+
+            sql_files = [
+                filename for filename in os.listdir(
+                    self.master_path +
+                    "/data")if filename.endswith(".sqlite3")]
+
+            json_files.extend(sql_files)
             my_files = [
-                discord.File(f'{self.master_path}/data/{i}')for i in SQLite_files]
+                discord.File(f'{self.master_path}/data/{i}')for i in json_files]
 
             await channel.send(files=my_files)
+
+    @auto_backup.before_loop
+    async def before_printer(self):
+        print('admin waiting...')
+        await self.bot.wait_until_ready()
 
 
 def setup(bot):
