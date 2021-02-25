@@ -99,8 +99,8 @@ class DiscordTweet(commands.Cog):
         self.tweet_mng = TweetManager()
         self.finish = '\N{WHITE HEAVY CHECK MARK}'
 
-        if not self.bot.loop.is_running():
-            self.tweet_timer.start()
+        self.tweet_timer.stop()
+        self.tweet_timer.start()
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -276,9 +276,17 @@ class DiscordTweet(commands.Cog):
 
     @ tasks.loop(hours=12.0)
     async def tweet_timer(self) -> None:
+        await self.delete_expired_tweet()
+
+    @tweet_timer.before_loop
+    async def before_printer(self):
+        print('tweet waiting...')
         await self.bot.wait_until_ready()
 
-        await self.delete_expired_tweet()
+    @tweet_timer.error
+    async def error(self, arg):
+        print(arg)
+        logging.warning(arg)
 
 
 def setup(bot):

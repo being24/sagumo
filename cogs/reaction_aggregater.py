@@ -3,18 +3,21 @@
 
 
 import asyncio
+import logging
 import typing
 from datetime import datetime
 
 import discord
+from discord import message
 from discord.ext import commands, tasks
 from discord.ext.menus import ListPageSource, MenuPages
+from sqlalchemy.sql.elements import Null
 
+from .utils.common import CommonUtil
 from .utils.confirm import Confirm
 from .utils.reaction_aggregation_manager import (AggregationManager,
                                                  ReactionParameter)
 from .utils.setting_manager import SettingManager
-from .utils.common import CommonUtil
 
 
 class ReactionList(ListPageSource):
@@ -119,8 +122,8 @@ class ReactionAggregator(commands.Cog):
         self.aggregation_mng = AggregationManager()
         self.c = CommonUtil()
 
-        if not self.bot.loop.is_running():
-            self.reaction_reminder.start()
+        self.reaction_reminder.stop()
+        self.reaction_reminder.start()
 
     async def start_paginating(self, ctx, reaction_list_of_guild):
         if reaction_list_of_guild is None:
@@ -189,6 +192,14 @@ class ReactionAggregator(commands.Cog):
             embed.set_footer(text=f"target : {roles}")
 
             await command_msg.reply(embed=embed)
+
+            msg = await channel.fetch_message(reaction_data.message_id)
+            await msg.edit(content=msg.content + "\n\t終了しました")
+
+        elif reaction_data.notified_at is not Null and reaction_data.target_value > reaction_data.sum:
+            channel = self.bot.get_channel(reaction_data.channel_id)
+            msg = await channel.fetch_message(reaction_data.message_id)
+            await msg.edit(content=msg.content.replace("\n\t終了しました", ""))
 
     @commands.command(aliases=['cnt'], description='リアクション集計コマンド')
     async def count(self, ctx, target_value: int = 0, *role_or_members: typing.Union[discord.Role, discord.Member]):
@@ -388,10 +399,14 @@ class ReactionAggregator(commands.Cog):
 
         for reaction in all_aggregation:
             elapsed_time = now - reaction.created_at
-            if elapsed_time.total_seconds() >= 12 * 3600 and reaction.remind is None:
-                await self.send_remind(reaction, elapsed_time.days)
-            elif elapsed_time.days != reaction.remind:
-                await self.send_remind(reaction, reaction.remind + 1)
+
+            if reaction.remind == "" or reaction.remind is None:  # 要修正
+                if elapsed_time.total_seconds() >= 12 * 3600:
+                    await self.send_remind(reaction, elapsed_time.days)
+            else:
+                if elapsed_time.days != reaction.remind:
+                    print(reaction.remind)
+                    await self.send_remind(reaction, reaction.remind + 1)
 
     async def send_remind(self, reaction: ReactionParameter, val: int) -> None:
         """リマインドを送信する関数
@@ -446,14 +461,18 @@ class ReactionAggregator(commands.Cog):
 
     @ tasks.loop(minutes=1.0)
     async def reaction_reminder(self) -> None:
+        await self.delete_notified()
+        await self.remind()
+
+    @reaction_reminder.before_loop
+    async def before_printer(self):
+        print('reaction waiting...')
         await self.bot.wait_until_ready()
 
-        today = datetime.today()
-        minutes = today.strftime('%M')
-
-        if minutes == '00':
-            await self.delete_notified()
-            await self.remind()
+    @reaction_reminder.error
+    async def error(self, arg):
+        print(arg)
+        logging.warning(arg)
 
 
 def setup(bot):
