@@ -2,16 +2,17 @@
 # -*- coding: utf-8 -*-
 
 
-from datetime import datetime
+import logging
 import typing
+from datetime import datetime
 
 import discord
 from discord.ext import commands, tasks
 from discord.ext.menus import ListPageSource, MenuPages
 
 from .utils.common import CommonUtil
-from .utils.setting_manager import SettingManager
 from .utils.polling_manager import PollingManager, PollingParameter
+from .utils.setting_manager import SettingManager
 
 
 class Polling(commands.Cog):
@@ -156,9 +157,17 @@ class Polling(commands.Cog):
 
     @ tasks.loop(hours=12.0)
     async def polling_timer(self) -> None:
+        await self.delete_expired_aggregation()
+
+    @polling_timer.before_loop
+    async def before_printer(self):
+        print('polling waiting...')
         await self.bot.wait_until_ready()
 
-        await self.delete_expired_aggregation()
+    @polling_timer.error
+    async def error(self, arg):
+        print(arg)
+        logging.warning(arg)
 
 
 def setup(bot):
