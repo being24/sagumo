@@ -190,6 +190,14 @@ class ReactionAggregator(commands.Cog):
 
             await command_msg.reply(embed=embed)
 
+            msg = await channel.fetch_message(reaction_data.message_id)
+            await msg.edit(content=msg.content + "\n\t終了しました")
+
+        elif reaction_data.notified_at is not Null and reaction_data.target_value > reaction_data.sum:
+            channel = self.bot.get_channel(reaction_data.channel_id)
+            msg = await channel.fetch_message(reaction_data.message_id)
+            await msg.edit(content=msg.content.replace("\n\t終了しました", ""))
+
     @commands.command(aliases=['cnt'], description='リアクション集計コマンド')
     async def count(self, ctx, target_value: int = 0, *role_or_members: typing.Union[discord.Role, discord.Member]):
         """リアクション集計を行うコマンド"""
