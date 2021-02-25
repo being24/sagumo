@@ -28,8 +28,8 @@ class Polling(commands.Cog):
             f'{i}\N{VARIATION SELECTOR-16}\N{COMBINING ENCLOSING KEYCAP}' for i in range(10)]
         self.finish = '\N{WHITE HEAVY CHECK MARK}'
 
-        if not self.bot.loop.is_running():
-            self.polling_timer.start()
+        self.polling_timer.stop()
+        self.polling_timer.start()
 
     @commands.Cog.listener()
     async def on_ready(self):

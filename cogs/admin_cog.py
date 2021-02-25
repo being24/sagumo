@@ -30,8 +30,8 @@ class Admin(commands.Cog, name='管理用コマンド群'):
 
         self.setting_mng = SettingManager()
 
-        if not self.bot.loop.is_running():
-            self.auto_backup.start()
+        self.auto_backup.stop()
+        self.auto_backup.start()
 
     async def cog_check(self, ctx):
         return ctx.guild and await self.bot.is_owner(ctx.author)

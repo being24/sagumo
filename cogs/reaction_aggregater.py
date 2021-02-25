@@ -122,8 +122,8 @@ class ReactionAggregator(commands.Cog):
         self.aggregation_mng = AggregationManager()
         self.c = CommonUtil()
 
-        if not self.bot.loop.is_running():
-            self.reaction_reminder.start()
+        self.reaction_reminder.stop()
+        self.reaction_reminder.start()
 
     async def start_paginating(self, ctx, reaction_list_of_guild):
         if reaction_list_of_guild is None:
