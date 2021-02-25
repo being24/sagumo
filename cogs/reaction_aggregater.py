@@ -5,7 +5,7 @@
 import asyncio
 import logging
 import typing
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import discord
 from discord import message
@@ -402,13 +402,12 @@ class ReactionAggregator(commands.Cog):
 
             if reaction.remind == "" or reaction.remind is None:  # 要修正
                 if elapsed_time.total_seconds() >= 12 * 3600:
-                    await self.send_remind(reaction, elapsed_time.days)
+                    await self.send_remind(reaction, elapsed_time.days, elapsed_time)
             else:
                 if elapsed_time.days != reaction.remind:
-                    print(reaction.remind)
-                    await self.send_remind(reaction, reaction.remind + 1)
+                    await self.send_remind(reaction, reaction.remind + 1, elapsed_time)
 
-    async def send_remind(self, reaction: ReactionParameter, val: int) -> None:
+    async def send_remind(self, reaction: ReactionParameter, val: int, elapsed_time: timedelta) -> None:
         """リマインドを送信する関数
 
         Args:
@@ -427,16 +426,21 @@ class ReactionAggregator(commands.Cog):
             roles_mention = ' '.join(
                 [member.mention for member in roles])
             roles_name = ' '.join([member.name for member in roles])
+
         auth = self.c.return_member_or_role(guild, reaction.author_id)
         reaction_sum = reaction.target_value
         reaction_cnt = reaction.sum
+
+        days = elapsed_time.days
+        minutes, seconds = divmod(elapsed_time.seconds, 60)
+        hours, minutes = divmod(minutes, 60)
         embed = discord.Embed(title="上記、リマインドします")
         embed.add_field(
             name="詳細",
             value=f"ID : {reaction.message_id} by : {auth}\nprogress : {reaction_sum}/{reaction_cnt} [link.]({url})",
             inline=False)
         embed.set_footer(
-            text=f"対象 : {roles_name}")
+            text=f"対象 : {roles_name} 経過時間 : {days} days, {hours} hours {minutes} minutes")
         if roles_mention != "None":
             await channel.send(f"{roles_mention}")
         await channel.send(embed=embed)
