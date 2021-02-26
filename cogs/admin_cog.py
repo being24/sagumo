@@ -133,6 +133,7 @@ class Admin(commands.Cog, name='管理用コマンド群'):
                     break
 
     @commands.command(aliases=['s_init'], description='沙雲の管理用役職を登録するコマンド')
+    @commands.has_permissions(ban_members=True)
     async def sagumo_initialization(self, ctx, bot_manager: discord.Role, bot_user: discord.Role):
         """管理用役職:bot管理者とbot使用者を登録するコマンド、順番注意"""
         if await self.setting_mng.is_exist(ctx.guild.id):
