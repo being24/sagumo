@@ -398,8 +398,10 @@ class ReactionAggregator(commands.Cog):
         now = datetime.now()
 
         for reaction in all_aggregation:
-            elapsed_time = now - reaction.created_at
+            if reaction.sum >= reaction.target_value:
+                continue
 
+            elapsed_time = now - reaction.created_at
             if reaction.remind == "" or reaction.remind is None:  # 要修正
                 if elapsed_time.total_seconds() >= 12 * 3600:
                     await self.send_remind(reaction, elapsed_time.days, elapsed_time)
