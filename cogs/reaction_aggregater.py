@@ -8,7 +8,6 @@ import typing
 from datetime import datetime, timedelta
 
 import discord
-from discord import message
 from discord.ext import commands, tasks
 from discord.ext.menus import ListPageSource, MenuPages
 from sqlalchemy.sql.elements import Null
@@ -253,7 +252,10 @@ class ReactionAggregator(commands.Cog):
         Raises:
             ValueError: なんでValueError出すのこれ
         """
-        if isinstance(error, commands.BadArgument):
+        if isinstance(
+            error,
+            (commands.BadArgument,
+             commands.BadUnionArgument)):
             notify_msg = await ctx.send(f'{ctx.author.mention}\n引数エラーです\n順番が間違っていませんか？')
             await self.c.autodel_msg(notify_msg)
         else:
@@ -436,7 +438,7 @@ class ReactionAggregator(commands.Cog):
         days = elapsed_time.days
         minutes, seconds = divmod(elapsed_time.seconds, 60)
         hours, minutes = divmod(minutes, 60)
-        embed = discord.Embed(title="上記、リマインドします")
+        embed = discord.Embed(title="リマインドします")
         embed.add_field(
             name="詳細",
             value=f"ID : {reaction.message_id} by : {auth}\nprogress : {reaction_sum}/{reaction_cnt} [link.]({url})",
