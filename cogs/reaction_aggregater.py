@@ -336,7 +336,7 @@ class ReactionAggregator(commands.Cog):
                 await self.c.autodel_msg(msg)
             except BaseException as e:
                 msg = await ctx.reply(f"{member}への{add_role}に失敗しました。{e}")
-                await self.c.autodel_msg(msg, second=)
+                await self.c.autodel_msg(msg, second=10)
 
         await ctx.reply('完了しました')
 
