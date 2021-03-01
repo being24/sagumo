@@ -180,9 +180,9 @@ class Admin(commands.Cog, name='管理用コマンド群'):
                     self.master_path +
                     "/data")if filename.endswith(".sqlite3")]
 
-            json_files.extend(sql_files)
+            # json_files.extend(sql_files)
             my_files = [
-                discord.File(f'{self.master_path}/data/{i}')for i in json_files]
+                discord.File(f'{self.master_path}/data/{i}')for i in sql_files]
 
             await channel.send(files=my_files)
 

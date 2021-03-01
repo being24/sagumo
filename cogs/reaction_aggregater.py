@@ -311,6 +311,35 @@ class ReactionAggregator(commands.Cog):
             notify_msg = await ctx.send(f"ID : {message_id}はリアクション集計対象ではありません")
             await self.c.autodel_msg(notify_msg)
 
+    @ commands.command(aliases=['add_role'],
+                       description='特定の役職持ちに特定のリアクションを付与するコマンド')
+    async def add_role_for_init(self, ctx, add_role: discord.Role, *has_role: discord.Role):
+        """bot管理者つけるために特定の役職持ちに役職を付与するコマンド"""
+        if not await self.c.has_bot_manager(ctx):
+            return
+        target_members = []
+        for role in has_role:
+            temp_members = [
+                member for member in ctx.guild.members if role in member.roles]
+            target_members.extend(temp_members)
+
+        target_members = list(set(target_members))
+
+        for member in target_members:
+            try:
+                await member.add_roles(add_role, reason=f"{ctx.me}による自動付与")
+                msg = await ctx.reply(f"{member}へ{add_role}を付与しました")
+                await self.c.autodel_msg(msg)
+                await asyncio.sleep(0.3)
+            except discord.Forbidden:
+                msg = await ctx.reply(f"{member}への{add_role}に失敗しました。権限不足です")
+                await self.c.autodel_msg(msg)
+            except BaseException as e:
+                msg = await ctx.reply(f"{member}への{add_role}に失敗しました。{e}")
+                await self.c.autodel_msg(msg, second=)
+
+        await ctx.reply('完了しました')
+
     @ commands.Cog.listener()
     async def on_raw_reaction_add(self, reaction):
         """リアクションが追加されたときに、集計対象メッセージであれば+1する関数
