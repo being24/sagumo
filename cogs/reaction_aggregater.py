@@ -461,8 +461,8 @@ class ReactionAggregator(commands.Cog):
             roles_name = ' '.join([member.name for member in roles])
 
         auth = self.c.return_member_or_role(guild, reaction.author_id)
-        reaction_sum = reaction.target_value
-        reaction_cnt = reaction.sum
+        reaction_sum = reaction.sum
+        reaction_cnt = reaction.target_value
 
         days = elapsed_time.days
         minutes, seconds = divmod(elapsed_time.seconds, 60)
