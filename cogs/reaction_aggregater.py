@@ -382,8 +382,11 @@ class ReactionAggregator(commands.Cog):
         Args:
             reaction (discord.Reaction): reactionオブジェクト
         """
-        if reaction.member.bot:
+        guild = self.bot.get_guild(reaction.guild_id)
+        member = guild.get_member(reaction.user_id)
+        if member.bot:
             return
+
         if reaction_data := await self.aggregation_mng.get_aggregation(reaction.message_id):
             message_id = reaction.message_id
             remove_usr = self.bot.get_user(reaction.user_id)
