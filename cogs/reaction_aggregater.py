@@ -382,17 +382,17 @@ class ReactionAggregator(commands.Cog):
         Args:
             reaction (discord.Reaction): reactionオブジェクト
         """
-        guild = self.bot.get_guild(reaction.guild_id)
-        member = guild.get_member(reaction.user_id)
-        if member.bot:
-            return
-
         if reaction_data := await self.aggregation_mng.get_aggregation(reaction.message_id):
             message_id = reaction.message_id
-            remove_usr = self.bot.get_user(reaction.user_id)
+            guild = self.bot.get_guild(reaction_data.guild_id)
+            remove_usr = guild.get_member(reaction.user_id)
+
             channel = self.bot.get_channel(reaction.channel_id)
 
-            if remove_usr.bot:
+            member_role_ids = [role.id for role in remove_usr.roles]
+            member_role_ids.append(reaction.user_id)
+
+            if len(set(reaction_data.ping_id) & set(member_role_ids)) == 0:
                 return
 
             if "matte" in reaction.emoji.name:
