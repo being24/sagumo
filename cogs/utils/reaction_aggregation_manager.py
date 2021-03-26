@@ -59,7 +59,7 @@ class AggregationManager():
         db_path = data_path
         db_path /= './data.sqlite3'
         self.engine = create_async_engine(
-            f'sqlite:///{db_path}', echo=True)
+            f'sqlite+aiosqlite:///{db_path}', echo=True)
 
     @staticmethod
     def return_dataclass(db_data) -> ReactionParameter:

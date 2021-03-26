@@ -8,12 +8,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Union
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.schema import Column
-from sqlalchemy.sql.sqltypes import BOOLEAN, DATETIME
-from sqlalchemy.types import VARCHAR, BigInteger, Integer
+from sqlalchemy.sql.sqltypes import DATETIME
+from sqlalchemy.types import VARCHAR, BigInteger
 
 Base = declarative_base()
 
@@ -46,7 +46,7 @@ class PollingManager():
         db_path = data_path
         db_path /= './data.sqlite3'
         self.engine = create_async_engine(
-            f'sqlite:///{db_path}', echo=True)
+            f'sqlite+aiosqlite:///{db_path}', echo=True)
 
     @staticmethod
     def return_dataclass(db_data) -> PollingParameter:
