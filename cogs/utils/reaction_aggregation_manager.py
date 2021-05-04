@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import asyncio
-import pathlib
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Union
@@ -14,6 +13,8 @@ from sqlalchemy.schema import Column
 from sqlalchemy.sql.elements import Null
 from sqlalchemy.sql.sqltypes import BOOLEAN, DATETIME
 from sqlalchemy.types import VARCHAR, BigInteger, Integer
+
+from .db import engine
 
 Base = declarative_base()
 
@@ -52,14 +53,6 @@ class ReactionAggregation(Base):
 
 
 class AggregationManager():
-    def __init__(self):
-        data_path = pathlib.Path(__file__).parents[1]
-        data_path /= '../data'
-        data_path = data_path.resolve()
-        db_path = data_path
-        db_path /= './data.sqlite3'
-        self.engine = create_async_engine(
-            f'sqlite+aiosqlite:///{db_path}', echo=True)
 
     @staticmethod
     def return_dataclass(db_data) -> ReactionParameter:
@@ -99,7 +92,7 @@ class AggregationManager():
         return db_data_raw
 
     async def create_table(self):
-        async with self.engine.begin() as conn:
+        async with engine.begin() as conn:
             await conn.run_sync(ReactionAggregation.metadata.create_all)
 
     async def register_aggregation(self, message_id: int, command_id: int, guild_id: int, channel_id: int, target_value: int, author_id: int, created_at: datetime, ping_id: str) -> None:
@@ -115,7 +108,7 @@ class AggregationManager():
             created_at (datetime): 作成日時
             ping_id (str): 対象のID
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 new_aggregation = ReactionAggregation(
                     message_id=message_id,
@@ -140,7 +133,7 @@ class AggregationManager():
         """
         guild_list = []
 
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 stmt = select(ReactionAggregation).where(
                     ReactionAggregation.guild_id == guild_id)
@@ -166,7 +159,7 @@ class AggregationManager():
         Returns:
             bool: あったらTrue、なかったらFalse
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 stmt = select(ReactionAggregation).where(
                     ReactionAggregation.message_id == message_id)
@@ -183,7 +176,7 @@ class AggregationManager():
         Args:
             message_id (int): メッセージID
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 stmt = delete(ReactionAggregation).where(
                     ReactionAggregation.message_id == message_id)
@@ -198,7 +191,7 @@ class AggregationManager():
         Returns:
             Union[None, ReactionParameter]: あれば情報、なければNone
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 stmt = select(ReactionAggregation).where(
                     ReactionAggregation.message_id == message_id)
@@ -216,7 +209,7 @@ class AggregationManager():
             message_id (int): メッセージID
             val (int): 値
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 stmt = update(ReactionAggregation).where(
                     ReactionAggregation.message_id == message_id).values(
@@ -230,7 +223,7 @@ class AggregationManager():
             message_id (int): メッセージID
             val (int): 値
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 stmt = update(ReactionAggregation).where(
                     ReactionAggregation.message_id == message_id).values(
@@ -244,7 +237,7 @@ class AggregationManager():
             message_id (int): メッセージID
             notified_time (datetime): 値
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 stmt = update(ReactionAggregation).where(
                     ReactionAggregation.message_id == message_id).values(
@@ -258,7 +251,7 @@ class AggregationManager():
             message_id (int): メッセージID
             notified_time (datetime): 値
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 stmt = update(ReactionAggregation).where(
                     ReactionAggregation.message_id == message_id).values(
@@ -272,7 +265,7 @@ class AggregationManager():
             message_id (int): メッセージID
             value (int): 値
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 stmt = update(ReactionAggregation).where(
                     ReactionAggregation.message_id == message_id).values(
@@ -285,7 +278,7 @@ class AggregationManager():
         Returns:
             Union[None, list[ReactionParameter]]: なければNone、あったらリスト
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 stmt = select(ReactionAggregation).where(
                     ReactionAggregation.notified_at.isnot(None))
@@ -305,7 +298,7 @@ class AggregationManager():
         Returns:
             Union[None, List[ReactionParameter]]: なければNone、あったらリスト
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 stmt = select(ReactionAggregation).where(
                     ReactionAggregation.remind.is_(Null)).order_by(
@@ -326,7 +319,7 @@ class AggregationManager():
         Returns:
             Union[None, List[ReactionParameter]]: なければNone、あったらリスト
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 stmt = select(ReactionAggregation).order_by(
                     ReactionAggregation.guild_id)
