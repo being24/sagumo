@@ -229,8 +229,9 @@ class DiscordTweet(commands.Cog):
 
     @ commands.Cog.listener()
     async def on_raw_reaction_add(self, reaction):
-        if reaction.member.bot:
+        if reaction.member is None or reaction.member.bot or reaction.guild_id is None:
             return
+
         if tweet_data := await self.tweet_mng.get_tweetdata(reaction.message_id):
 
             main_guild = self.bot.get_guild(410454762522411009)

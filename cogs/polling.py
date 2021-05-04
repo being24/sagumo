@@ -101,7 +101,7 @@ class Polling(commands.Cog):
 
     @ commands.Cog.listener()
     async def on_raw_reaction_add(self, reaction):
-        if reaction.member.bot:
+        if reaction.member is None or reaction.member.bot or reaction.guild_id is None:
             return
         if polling_data := await self.polling_mng.get_aggregation(reaction.message_id):
             member_role_ids = [role.id for role in reaction.member.roles]
