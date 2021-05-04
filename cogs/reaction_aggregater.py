@@ -9,6 +9,8 @@ from datetime import datetime, timedelta
 
 import discord
 from discord.ext import commands, tasks
+from discord.ext.commands.errors import (BadArgument, BadUnionArgument,
+                                         CommandInvokeError)
 from discord.ext.menus import ListPageSource, MenuPages
 from sqlalchemy.sql.elements import Null
 
@@ -250,13 +252,10 @@ class ReactionAggregator(commands.Cog):
         Raises:
             ValueError: なんでValueError出すのこれ
         """
-        if isinstance(
-            error,
-            (commands.BadArgument,
-             commands.BadUnionArgument)):
+        if isinstance(error, (BadArgument, BadUnionArgument)):
             notify_msg = await ctx.send(f'{ctx.author.mention}\n引数エラーです\n順番が間違っていませんか？')
             await self.c.autodel_msg(notify_msg)
-        else:
+        elif isinstance(error, CommandInvokeError):
             raise ValueError
 
     @ commands.group(aliases=['lsre', 'ls'],
