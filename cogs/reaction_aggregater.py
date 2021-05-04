@@ -408,7 +408,7 @@ class ReactionAggregator(commands.Cog):
             await self.judge_and_notice(message_id)
 
     async def delete_notified(self) -> None:
-        """リアクション集計が終了してから3日以上たった時に削除するコマンド
+        """リアクション集計が終了してから3日以上たった時に削除する関数
         """
         notified_aggregation = await self.aggregation_mng.get_notified_aggregation()
 
