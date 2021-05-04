@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import asyncio
-import pathlib
 from dataclasses import dataclass
 from typing import Union
 
@@ -11,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.schema import Column
 from sqlalchemy.types import BigInteger
+
+from .db import engine
 
 Base = declarative_base()
 
@@ -33,19 +34,11 @@ class GuildSettingDB(Base):
 
 
 class SettingManager():
-    def __init__(self):
-        data_path = pathlib.Path(__file__).parents[1]
-        data_path /= '../data'
-        data_path = data_path.resolve()
-        db_path = data_path
-        db_path /= './data.sqlite3'
-        self.engine = create_async_engine(
-            f'sqlite+aiosqlite:///{db_path}', echo=True)
 
     async def create_table(self) -> None:
         """テーブルを作成する関数
         """
-        async with self.engine.begin() as conn:
+        async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
             try:
                 await self._init_setting()
@@ -53,7 +46,7 @@ class SettingManager():
                 pass
 
     async def _init_setting(self) -> None:
-        async with AsyncSession(self.engine, expire_on_commit=True) as session:
+        async with AsyncSession(engine, expire_on_commit=True) as session:
             async with session.begin():
                 new_setting = GuildSettingDB(index=True)
                 session.add(new_setting)
@@ -66,7 +59,7 @@ class SettingManager():
             bot_manager_id (int): BOT管理者役職のID
             bot_user_id (int): BOT使用者役職のID
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 new_guild = GuildSettingDB(
                     guild_id=guild_id,
@@ -83,7 +76,7 @@ class SettingManager():
             bot_manager_id (int): bot管理者のID
             bot_user_id (int): bot操作者のID
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 stmt = update(GuildSettingDB).where(
                     GuildSettingDB.guild_id == guild_id).values(
@@ -100,7 +93,7 @@ class SettingManager():
         Returns:
             bool: あったらTrue、なかったらFalse
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 stmt = select(GuildSettingDB).where(
                     GuildSettingDB.guild_id == guild_id)
@@ -120,7 +113,7 @@ class SettingManager():
         Returns:
             GuildSetting: サーバの設定のデータクラス
         """
-        async with AsyncSession(self.engine, expire_on_commit=True) as session:
+        async with AsyncSession(engine, expire_on_commit=True) as session:
             async with session.begin():
                 stmt = select(GuildSettingDB).where(
                     GuildSettingDB.guild_id == guild_id)

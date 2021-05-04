@@ -3,7 +3,6 @@
 
 import asyncio
 import dataclasses
-import pathlib
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Union
@@ -14,6 +13,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.schema import Column
 from sqlalchemy.sql.sqltypes import DATETIME
 from sqlalchemy.types import VARCHAR, BigInteger
+
+from .db import engine
 
 Base = declarative_base()
 
@@ -39,14 +40,6 @@ class PollingObj(Base):
 
 
 class PollingManager():
-    def __init__(self):
-        data_path = pathlib.Path(__file__).parents[1]
-        data_path /= '../data'
-        data_path = data_path.resolve()
-        db_path = data_path
-        db_path /= './data.sqlite3'
-        self.engine = create_async_engine(
-            f'sqlite+aiosqlite:///{db_path}', echo=True)
 
     @staticmethod
     def return_dataclass(db_data) -> PollingParameter:
@@ -77,7 +70,7 @@ class PollingManager():
         return db_data_raw
 
     async def create_table(self):
-        async with self.engine.begin() as conn:
+        async with engine.begin() as conn:
             await conn.run_sync(PollingObj.metadata.create_all)
 
     async def register_polling(self, data: PollingParameter) -> None:
@@ -86,7 +79,7 @@ class PollingManager():
         Args:
             data (PollingParameter): 投票のデータ
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 allow_list = ",".join([str(id) for id in data.allow_list])
                 new_aggregation = PollingObj(
@@ -107,7 +100,7 @@ class PollingManager():
         Returns:
             Union[None, PollingParameter]: あれば情報、なければNone
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 stmt = select(PollingObj).where(
                     PollingObj.message_id == message_id)
@@ -124,7 +117,7 @@ class PollingManager():
         Args:
             message_id (int): メッセージID
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 stmt = delete(PollingObj).where(
                     PollingObj.message_id == message_id)
@@ -136,7 +129,7 @@ class PollingManager():
         Returns:
             Union[None, List[ReactionParameter]]: なければNone、あったらリスト
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 stmt = select(PollingObj)
                 result = await session.execute(stmt)
@@ -158,7 +151,7 @@ class PollingManager():
         Returns:
             bool: あったらTrue、なかったらFalse
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 stmt = select(PollingObj).where(
                     PollingObj.message_id == message_id)

@@ -3,7 +3,6 @@
 
 import asyncio
 import dataclasses
-import pathlib
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Union
@@ -14,6 +13,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.schema import Column
 from sqlalchemy.sql.sqltypes import Boolean, DATETIME
 from sqlalchemy.types import VARCHAR, BigInteger
+
+from .db import engine
 
 Base = declarative_base()
 
@@ -39,14 +40,6 @@ class TweetObj(Base):
 
 
 class TweetManager():
-    def __init__(self):
-        data_path = pathlib.Path(__file__).parents[1]
-        data_path /= '../data'
-        data_path = data_path.resolve()
-        db_path = data_path
-        db_path /= './data.sqlite3'
-        self.engine = create_async_engine(
-            f'sqlite+aiosqlite:///{db_path}', echo=True)
 
     @staticmethod
     def return_dataclass(db_data: TweetObj) -> TweetParameter:
@@ -67,7 +60,7 @@ class TweetManager():
         return db_data_raw
 
     async def create_table(self):
-        async with self.engine.begin() as conn:
+        async with engine.begin() as conn:
             await conn.run_sync(TweetObj.metadata.create_all)
 
     async def register_tweetdata(self, data: TweetParameter) -> None:
@@ -76,7 +69,7 @@ class TweetManager():
         Args:
             data (TweetParameter): ツイートのデータ
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 new_queue = TweetObj(
                     message_id=data.message_id,
@@ -96,7 +89,7 @@ class TweetManager():
         Returns:
             Union[None, TweetParameter]: あれば情報、なければNone
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 stmt = select(TweetObj).where(
                     TweetObj.message_id == message_id)
@@ -113,7 +106,7 @@ class TweetManager():
         Args:
             message_id (int): メッセージID
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 stmt = delete(TweetObj).where(
                     TweetObj.message_id == message_id)
@@ -125,7 +118,7 @@ class TweetManager():
         Returns:
             Union[None, List[TweetParameter]]: なければNone、あったらリスト
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 stmt = select(TweetObj)
                 result = await session.execute(stmt)
@@ -147,7 +140,7 @@ class TweetManager():
         Returns:
             bool: あったらTrue、なかったらFalse
         """
-        async with AsyncSession(self.engine) as session:
+        async with AsyncSession(engine) as session:
             async with session.begin():
                 stmt = select(TweetObj).where(
                     TweetObj.message_id == message_id)
