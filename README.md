@@ -42,7 +42,7 @@ SCPJP discord用のリアクション集計bot(読みは気にしない方針で
 #### remove (aliases = [rm])
 
 ``` sh
-/remove(rm) id
+/rm id
 ```
 
 指定されたIDの集計を取りやめます。
@@ -50,7 +50,7 @@ SCPJP discord用のリアクション集計bot(読みは気にしない方針で
 #### add_role_for_init (aliases = [add_role])
 
 ``` sh
-/add_role_for_init(add_role) add_role *has_role
+/add_role add_role *has_role
 ```
 
 has_role（複数個も可）を持っている役職にadd_roleをつけるコマンド。
@@ -58,7 +58,7 @@ has_role（複数個も可）を持っている役職にadd_roleをつけるコ�
 #### sagumo_initialization (aliases=[s_init])
 
 ``` sh
-/sagumo_initialization(s_init)  bot_manager bot_user
+/s_init  bot_manager bot_user
 ```
 
 沙雲の管理用役職を登録するコマンド、両方ともroleです、順番注意。
