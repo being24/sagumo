@@ -344,7 +344,7 @@ class ReactionAggregator(commands.Cog):
         Args:
             reaction (discord.Reaction): reactionオブジェクト
         """
-        if reaction.member.bot:
+        if reaction.member is None or reaction.member.bot or reaction.guild_id is None:
             return
         if reaction_data := await self.aggregation_mng.get_aggregation(reaction.message_id):
             message_id = reaction.message_id
@@ -381,6 +381,9 @@ class ReactionAggregator(commands.Cog):
         Args:
             reaction (discord.Reaction): reactionオブジェクト
         """
+        if reaction.member.bot or reaction.guild_id is None:
+            return
+
         if reaction_data := await self.aggregation_mng.get_aggregation(reaction.message_id):
             message_id = reaction.message_id
             guild = self.bot.get_guild(reaction_data.guild_id)

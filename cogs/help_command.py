@@ -36,7 +36,7 @@ class HelpMenu(ListPageSource):
         embed = Embed(title="コマンド一覧",
                       description="使用可能なコマンド",
                       colour=self.ctx.author.colour)
-        embed.set_thumbnail(url=self.ctx.guild.me.avatar_url)
+        embed.set_thumbnail(url=self.ctx.me.avatar_url)
         embed.set_footer(
             text=f"{offset:,} - {min(len_data, offset+self.per_page-1):,} of {len_data:,} commands.")
 
