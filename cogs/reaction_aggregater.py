@@ -143,7 +143,7 @@ class ReactionAggregator(commands.Cog):
         channel = self.bot.get_channel(channel_id)
         try:
             msg = await channel.fetch_message(message_id)
-            await msg.clear_reactions()
+            # await msg.clear_reactions()
             await msg.edit(content="集計終了しました")
         except discord.Forbidden:
             pass
