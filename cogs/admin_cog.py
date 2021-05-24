@@ -115,8 +115,12 @@ class Admin(commands.Cog, name='管理用コマンド群'):
 
     @commands.command(hidden=True)
     async def restore_one(self, ctx):
+        if ctx.message.attachments is None:
+            await ctx.send('ファイルが添付されていません')
+
         for attachment in ctx.message.attachments:
             await attachment.save(f"{self.master_path}/data/{attachment.filename}")
+            await ctx.send(f'{attachment.filename}を追加しました')
 
     @commands.command(hidden=True)
     async def restore(self, ctx):
