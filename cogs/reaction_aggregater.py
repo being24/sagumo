@@ -390,7 +390,7 @@ class ReactionAggregator(commands.Cog):
             remove_usr = guild.get_member(reaction.user_id)
 
             channel = self.bot.get_channel(reaction.channel_id)
- 
+
             member_role_ids = [role.id for role in remove_usr.roles]
             member_role_ids.append(reaction.user_id)
 
