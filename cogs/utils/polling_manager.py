@@ -14,7 +14,13 @@ from sqlalchemy.schema import Column
 from sqlalchemy.sql.sqltypes import DATETIME
 from sqlalchemy.types import VARCHAR, BigInteger
 
-from .db import engine
+try:
+    from .db import engine
+except:
+    import sys
+    sys.path.append("../utils")
+    from db import engine
+
 
 Base = declarative_base()
 
@@ -169,8 +175,8 @@ if __name__ == "__main__":
 
     now = datetime.now()
 
-    test = PollingParameter(message_id=124, author_id=123, created_at=now)
-    print(asyncio.run(polling_mng.get_aggregation(123)))
+    # test = PollingParameter(message_id=124, author_id=123, created_at=now)
+    print(asyncio.run(polling_mng.get_aggregation(814348307827523585)))
 
     # for i in result:
     #    print(i)
