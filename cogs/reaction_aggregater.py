@@ -280,7 +280,8 @@ class ReactionAggregator(commands.Cog):
 
         await self.start_paginating(ctx, reaction_list_of_guild)
 
-    @list_reaction.command(description='現在DB上にある集計一覧を出力')
+    @list_reaction.command(aliases=['-a'],
+                           description='現在DB上にある集計一覧を出力')
     async def all(self, ctx):
         """集計中のすべてのリアクション一覧を表示するコマンド"""
         if not await self.c.has_bot_manager(ctx):
