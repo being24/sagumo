@@ -1,6 +1,7 @@
 # !/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import copy
 import logging
 import os
 import traceback
@@ -32,6 +33,13 @@ class MyBot(commands.Bot):
         print('------')
         logging.warning('rebooted')
         await bot.change_presence(activity=discord.Game(name='リアクション集計中'))
+
+    async def on_message(self, message):
+        message_contents = message.content.split('\n')
+
+        for content in message_contents:
+            message.content = content
+            await bot.process_commands(message)
 
 
 if __name__ == '__main__':
