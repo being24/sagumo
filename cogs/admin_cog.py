@@ -1,15 +1,11 @@
 # !/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 
 import os
 import time
-import traceback
-import typing
 from datetime import datetime
 
 import discord
-import discosnow as ds
+import tzlocal
 from discord.ext import commands, tasks
 
 from .utils.setting_manager import SettingManager
@@ -28,6 +24,7 @@ class Admin(commands.Cog, name='管理用コマンド群'):
         self.master_path = os.path.dirname(
             os.path.dirname(os.path.abspath(__file__)))
 
+        self.local_timezone = tzlocal.get_localzone()
         self.setting_mng = SettingManager()
 
         self.auto_backup.stop()
@@ -54,7 +51,7 @@ class Admin(commands.Cog, name='管理用コマンド群'):
         await guild.system_channel.send(embed=embed)
 
     @commands.command(aliases=['re'], hidden=True)
-    async def reload(self, ctx, cogname: typing.Optional[str] = "ALL"):
+    async def reload(self, ctx, cogname: str = "ALL"):
         if cogname == "ALL":
             reloaded_list = []
             for cog in os.listdir(self.master_path + "/cogs"):
@@ -64,8 +61,9 @@ class Admin(commands.Cog, name='管理用コマンド群'):
                         self.bot.unload_extension(f'cogs.{cog}')
                         self.bot.load_extension(f'cogs.{cog}')
                         reloaded_list.append(cog)
-                    except Exception:
-                        traceback.print_exc()
+                    except Exception as e:
+                        print(e)
+                        await ctx.reply(e, mention_author=False)
             await ctx.reply(f"{reloaded_list}をreloadしました", mention_author=False)
         else:
             try:
@@ -129,8 +127,7 @@ class Admin(commands.Cog, name='管理用コマンド群'):
                 if len(message.attachments) != 0:
                     attachments_name = ' '.join(
                         [i.filename for i in message.attachments])
-                    msg_time = ds.snowflake2time(
-                        message.id).strftime('%m-%d %H:%M')
+                    msg_time = message.created_at.strftime('%m-%d %H:%M')
                     await ctx.send(f'{msg_time}の{attachments_name}を取り込みます')
                     for attachment in message.attachments:
                         await attachment.save(f"{self.master_path}/data/{attachment.filename}")
@@ -168,7 +165,7 @@ class Admin(commands.Cog, name='管理用コマンド群'):
 
     @tasks.loop(minutes=1.0)
     async def auto_backup(self):
-        now = datetime.now()
+        now = datetime.now(self.local_timezone)
         now_HM = now.strftime('%H:%M')
 
         if now_HM == '04:05':
