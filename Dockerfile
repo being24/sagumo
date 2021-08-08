@@ -13,6 +13,7 @@ RUN set -x && \
     git clone https://github.com/being24/sagumo.git && \
     python3 -m pip install -r ./sagumo/requirements.txt && \
     python -m pip install -U git+https://github.com/Rapptz/discord-ext-menus && \
+    pip install git+https://github.com/Rapptz/discord.py && \
     chmod 0700 ./sagumo/*.sh && \
     chmod 0700 ./sagumo/bot.py && \
     apk del build-base  && \
