@@ -3,7 +3,7 @@
 
 import asyncio
 from dataclasses import dataclass
-from typing import Union
+from typing import List, Optional, Union
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -11,7 +11,10 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.schema import Column
 from sqlalchemy.types import BigInteger
 
-from .db import engine
+try:
+    from .db import engine
+except ImportError:
+    from db import engine
 
 Base = declarative_base()
 
@@ -34,7 +37,6 @@ class GuildSettingDB(Base):
 
 
 class SettingManager():
-
     async def create_table(self) -> None:
         """テーブルを作成する関数
         """
@@ -104,7 +106,7 @@ class SettingManager():
                 else:
                     return False
 
-    async def get_guild(self, guild_id: int) -> Union[GuildSetting, None]:
+    async def get_guild(self, guild_id: int) -> Optional[GuildSetting]:
         """ギルドの情報をGuildSettingで返す関数
 
         Args:
@@ -130,6 +132,24 @@ class SettingManager():
 
         return guildsetting
 
+    async def get_guild_ids(self) -> Optional[List[int]]:
+        """沙雲が設定されているサーバーのid一覧を返す関数
+
+        Returns:
+            Optional[List[int]]: あればINTのリスト、なければNone
+        """
+        async with AsyncSession(engine) as session:
+            async with session.begin():
+                stmt = select(GuildSettingDB)
+                result = await session.execute(stmt)
+                result = result.fetchall()
+
+                if len(result) == 0:
+                    return None
+
+                guild_ids = [id_[0].guild_id for id_ in result]
+        return guild_ids
+
 
 if __name__ == "__main__":
     setting_mng = SettingManager()
@@ -137,5 +157,5 @@ if __name__ == "__main__":
 
     # asyncio.run(setting_mng.register_setting())
 
-    result = asyncio.run(setting_mng.get_guild(1))
+    result = asyncio.run(setting_mng.get_guild(410454762522411009))
     print((result))
