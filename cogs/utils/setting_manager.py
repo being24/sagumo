@@ -11,7 +11,10 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.schema import Column
 from sqlalchemy.types import BigInteger
 
-from .db import engine
+try:
+    from .db import engine
+except ImportError:
+    from db import engine
 
 Base = declarative_base()
 
@@ -154,5 +157,5 @@ if __name__ == "__main__":
 
     # asyncio.run(setting_mng.register_setting())
 
-    result = asyncio.run(setting_mng.get_guild(1))
+    result = asyncio.run(setting_mng.get_guild(410454762522411009))
     print((result))
