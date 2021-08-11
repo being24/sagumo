@@ -338,7 +338,7 @@ class ReactionAggregator(commands.Cog):
 
         await ctx.reply('完了しました')
 
-    @ commands.Cog.listener()
+    @commands.Cog.listener()
     async def on_raw_reaction_add(self, reaction):
         """リアクションが追加されたときに、集計対象メッセージであれば+1する関数
 
@@ -375,7 +375,7 @@ class ReactionAggregator(commands.Cog):
 
             await self.judge_and_notice(message_id)
 
-    @ commands.Cog.listener()
+    @commands.Cog.listener()
     async def on_raw_reaction_remove(self, reaction):
         """リアクションが除去されたときに、集計対象メッセージであれば-1する関数
 
