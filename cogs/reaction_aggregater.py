@@ -141,6 +141,9 @@ class ReactionAggregator(commands.Cog):
             message_id (int): メッセージID
         """
         channel = self.bot.get_channel(channel_id)
+        if isinstance(channel, discord.Thread):
+            if channel.archived:
+                return
         try:
             msg = await channel.fetch_message(message_id)
             # await msg.clear_reactions()
@@ -339,7 +342,7 @@ class ReactionAggregator(commands.Cog):
         await ctx.reply('完了しました')
 
     @commands.Cog.listener()
-    async def on_raw_reaction_add(self, reaction):
+    async def on_raw_reaction_add(self, reaction: discord.RawReactionActionEvent):
         """リアクションが追加されたときに、集計対象メッセージであれば+1する関数
 
         Args:
@@ -376,7 +379,7 @@ class ReactionAggregator(commands.Cog):
             await self.judge_and_notice(message_id)
 
     @commands.Cog.listener()
-    async def on_raw_reaction_remove(self, reaction):
+    async def on_raw_reaction_remove(self, reaction: discord.RawReactionActionEvent):
         """リアクションが除去されたときに、集計対象メッセージであれば-1する関数
 
         Args:

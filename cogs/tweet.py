@@ -224,12 +224,21 @@ class DiscordTweet(commands.Cog):
             if elapsed_time.days >= 30:
                 await self.tweet_mng.remove_tweetdata(reaction.message_id)
                 channel = self.bot.get_channel(reaction.channel_id)
+                if isinstance(channel, discord.Thread):
+                    if channel.archived:
+                        return
                 msg = await channel.fetch_message(reaction.message_id)
                 await msg.clear_reactions()
 
     @ commands.Cog.listener()
-    async def on_raw_reaction_add(self, reaction):
-        if reaction.member is None or reaction.member.bot or reaction.guild_id is None:
+    async def on_raw_reaction_add(self, reaction: discord.RawReactionActionEvent):
+        if reaction.member is None:
+            return
+
+        if reaction.member.bot:
+            return
+
+        if reaction.guild_id is None:
             return
 
         if tweet_data := await self.tweet_mng.get_tweetdata(reaction.message_id):
