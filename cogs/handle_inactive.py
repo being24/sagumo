@@ -151,7 +151,7 @@ class InactiveDetector(commands.Cog):
             return
         await self.inactive_mng.update_last_react(reaction.user_id)
 
-    @tasks.loop(seconds=5.0)
+    @tasks.loop(hours=1.0)
     async def inactive_loop(self) -> None:
         # 一時間ごとにDBから非アクティブメンバーを検索して、通知する
         # 最終のリアクションとポストの現在時間との差が3ヶ月以上のアカウントを取得する
@@ -183,6 +183,7 @@ class InactiveDetector(commands.Cog):
     async def before_printer(self):
         print('reaction waiting...')
         await self.bot.wait_until_ready()
+        await asyncio.sleep(5)
 
     @inactive_loop.error
     async def error(self, arg):
