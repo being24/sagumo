@@ -100,7 +100,7 @@ class Polling(commands.Cog):
             await self.polling_mng.register_polling(data)
 
     @ commands.Cog.listener()
-    async def on_raw_reaction_add(self, reaction):
+    async def on_raw_reaction_add(self, reaction: discord.RawReactionActionEvent):
         if reaction.member is None or reaction.member.bot or reaction.guild_id is None:
             return
         if polling_data := await self.polling_mng.get_aggregation(reaction.message_id):
