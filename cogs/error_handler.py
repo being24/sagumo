@@ -54,6 +54,10 @@ class CommandErrorHandler(commands.Cog):
             msg = await ctx.reply("無効な引数です")
             await self.autodel_msg(msg)
 
+        elif isinstance(error, commands.BadUnionArgument):
+            msg = await ctx.reply("無効な引数です")
+            await self.autodel_msg(msg)
+
         elif isinstance(error, commands.MissingRequiredArgument):
             msg = await ctx.reply("引数が足りません")
             await self.autodel_msg(msg)
