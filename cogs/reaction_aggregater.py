@@ -67,7 +67,7 @@ class ReactionList(ListPageSource):
             title="集計中のリアクションは以下の通りです",
             description=f"本サーバーでは{len_data}件集計中",
             color=0x0088ff)
-        embed.set_thumbnail(url=self.ctx.guild.me.avatar_url)
+        embed.set_thumbnail(url=self.ctx.guild.me.avatar.replace(format="png").url)
 
         embed.set_footer(
             text=f"{offset:,} - {min(len_data, offset+self.per_page-1):,} of {len_data:,} records.")
