@@ -141,6 +141,9 @@ class ReactionAggregator(commands.Cog):
             message_id (int): メッセージID
         """
         channel = self.bot.get_channel(channel_id)
+        if isinstance(channel, discord.Thread):
+            if channel.archived:
+                return
         try:
             msg = await channel.fetch_message(message_id)
             # await msg.clear_reactions()
@@ -280,7 +283,8 @@ class ReactionAggregator(commands.Cog):
 
         await self.start_paginating(ctx, reaction_list_of_guild)
 
-    @list_reaction.command(description='現在DB上にある集計一覧を出力')
+    @list_reaction.command(aliases=['-a'],
+                           description='現在DB上にある集計一覧を出力')
     async def all(self, ctx):
         """集計中のすべてのリアクション一覧を表示するコマンド"""
         if not await self.c.has_bot_manager(ctx):
@@ -337,8 +341,8 @@ class ReactionAggregator(commands.Cog):
 
         await ctx.reply('完了しました')
 
-    @ commands.Cog.listener()
-    async def on_raw_reaction_add(self, reaction):
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, reaction: discord.RawReactionActionEvent):
         """リアクションが追加されたときに、集計対象メッセージであれば+1する関数
 
         Args:
@@ -374,8 +378,8 @@ class ReactionAggregator(commands.Cog):
 
             await self.judge_and_notice(message_id)
 
-    @ commands.Cog.listener()
-    async def on_raw_reaction_remove(self, reaction):
+    @commands.Cog.listener()
+    async def on_raw_reaction_remove(self, reaction: discord.RawReactionActionEvent):
         """リアクションが除去されたときに、集計対象メッセージであれば-1する関数
 
         Args:
@@ -390,7 +394,7 @@ class ReactionAggregator(commands.Cog):
             remove_usr = guild.get_member(reaction.user_id)
 
             channel = self.bot.get_channel(reaction.channel_id)
- 
+
             member_role_ids = [role.id for role in remove_usr.roles]
             member_role_ids.append(reaction.user_id)
 
