@@ -47,7 +47,7 @@ class TweetList(ListPageSource):
             title="承認待ちのツイートは以下の通りです",
             description=f"{len_data}件待機中",
             color=0x0088ff)
-        embed.set_thumbnail(url=self.ctx.guild.me.avatar_url)
+        embed.set_thumbnail(url=self.ctx.guild.me.avatar.replace(format="png").url)
 
         embed.set_footer(
             text=f"{offset:,} - {min(len_data, offset+self.per_page-1):,} of {len_data:,} records.")

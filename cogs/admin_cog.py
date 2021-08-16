@@ -43,7 +43,7 @@ class Admin(commands.Cog, name='管理用コマンド群'):
             color=0x2fe48d)
         embed.set_author(
             name=f"{self.bot.user.name}",
-            icon_url=f"{self.bot.user.avatar_url}")
+            icon_url=f"{self.bot.user.avatar.replace(format='png').url}")
         embed.add_field(
             name="Tips",
             value="はじめに `/s_init @bot管理者役職 @bot使用者役職`で各役職を登録してください",
