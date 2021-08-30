@@ -1,6 +1,6 @@
 aiosqlite==0.17.0
 chardet>=2.0,<4.0
-demoji==1.0.0
+demoji==1.1.0
 discord-sentry-reporting==2.0.4
 discord.py==1.7.3
 python-dateutil==2.8.2
