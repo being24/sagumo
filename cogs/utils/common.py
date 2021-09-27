@@ -2,8 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import typing
-from cogs.utils.reaction_aggregation_manager import ReactionParameter
+from datetime import datetime
+
 import discord
+import pytz
+import tzlocal
+from cogs.utils.reaction_aggregation_manager import ReactionParameter
 
 from .setting_manager import SettingManager
 
@@ -11,6 +15,7 @@ from .setting_manager import SettingManager
 class CommonUtil():
     def __init__(self):
         self.setting_mng = SettingManager()
+        self.local_timezone = tzlocal.get_localzone()
 
     async def is_bot_user(self, guild: discord.Guild, command_user: discord.Member) -> bool:
         """そのサーバーのBOT_user役職を持っているか判定する関数
@@ -133,3 +138,19 @@ class CommonUtil():
             return False
         else:
             return True
+
+    def convert_utc_into_jst(self, time: datetime) -> datetime:
+        """naive/awareなUTCをawareなJSTにする関数
+
+        Args:
+            created_at (datetime): naiveなUTC
+
+        Returns:
+            datetime: awareなJST
+        """
+        if time.tzinfo is None:
+            time = pytz.utc.localize(time)
+
+        time_jst = time.astimezone(
+            pytz.timezone(self.local_timezone.zone))
+        return time_jst

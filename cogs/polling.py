@@ -166,7 +166,9 @@ class Polling(commands.Cog):
 
     @polling_timer.error
     async def error(self, arg):
-        print(arg)
+        now = discord.utils.utcnow()
+        jst_now = self.c.convert_utc_into_jst(now)
+        print(jst_now, self.qualified_name, arg)
         logging.warning(arg)
 
 
