@@ -104,12 +104,15 @@ class Admin(commands.Cog, name='管理用コマンド群'):
     async def back_up(self, ctx):
         SQLite_files = [
             filename for filename in os.listdir(self.master_path + "/data")
-            if filename.endswith(".sqlite")]
+            if filename.endswith(".sqlite3")]
 
         my_files = [discord.File(f'{self.master_path}/data/{i}')
                     for i in SQLite_files]
 
-        await ctx.send(files=my_files)
+        if len(my_files) == 0:
+            await ctx.reply("対象が存在しません")
+        else:
+            await ctx.reply(files=my_files)
 
     @commands.command(hidden=True)
     async def restore_one(self, ctx):
