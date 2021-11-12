@@ -130,20 +130,6 @@ class InactiveDetector(commands.Cog):
         else:
             await ctx.reply(f'{member.name}はDBに存在しません')
 
-    @commands.command(description='指定された役職のメンバーをDBから削除するコマンド')
-    async def test(self, ctx):
-        channel = self.bot.get_channel(self.notify_msg_channel)
-        if channel is None:
-            channel = self.bot.get_channel(682930390276505601)
-
-        # 送信する
-        try:
-            await channel.send('embed=embed', allowed_mentions=discord.AllowedMentions.none())
-        except discord.Forbidden:
-            channel = self.bot.get_channel(609059625098018828)
-            await channel.send('embed=embed', allowed_mentions=discord.AllowedMentions.none())
-
-
     @commands.Cog.listener()
     async def on_message(self, message):
         # メッセージの送り主がDBに登録されていた場合、last_postedを更新する
