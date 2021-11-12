@@ -261,6 +261,7 @@ class ReactionAggregator(commands.Cog):
             notify_msg = await ctx.send(f'{ctx.author.mention}\n引数エラーです\n順番が間違っていませんか？')
             await self.c.autodel_msg(notify_msg)
         elif isinstance(error, CommandInvokeError):
+            print(error)
             raise ValueError
 
     @ commands.group(aliases=['lsre', 'ls'],
