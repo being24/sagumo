@@ -172,6 +172,14 @@ class InactiveManager():
             return result
 
     async def check_member(self, member_id: int) -> bool:
+        """監視対象であるかを確認する関数
+
+        Args:
+            member_id (int): user_id
+
+        Returns:
+            bool: 対象であればTrue
+        """        
         stmt = select([InactiveDetectorDB.user_id]).where(
             InactiveDetectorDB.user_id == member_id)
         async with AsyncSession(engine) as session:
