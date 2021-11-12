@@ -170,11 +170,13 @@ class InactiveDetector(commands.Cog):
 
         # 送信先を取得する
         channel = self.bot.get_channel(self.notify_msg_channel)
-        if channel is None:
-            channel = self.bot.get_channel(682930785480605760)
 
         # 送信する
-        await channel.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+        try:
+            await channel.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+        except discord.Forbidden:
+            channel = self.bot.get_channel(682930390276505601)
+            await channel.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
         # 通知済みに設定する
         await self.inactive_mng.set_notified(inactive_list)
