@@ -18,6 +18,6 @@ RUN set -x && \
     chmod 0700 ./sagumo/bot.py && \
     apk del build-base  && \
     rm -rf /var/cache/apk/*  && \
-    echo "Hello, sagumo ready!" 
+    echo "Hello, sagumo ready!"
 
 CMD ["/opt/sagumo/bot.sh"]
