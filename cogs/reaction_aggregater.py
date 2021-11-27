@@ -143,6 +143,8 @@ class ReactionAggregator(commands.Cog):
             message_id (int): メッセージID
         """
         channel = self.bot.get_channel(channel_id)
+        if channel is None:
+            return
         if isinstance(channel, discord.Thread):
             if channel.archived:
                 return
