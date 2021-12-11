@@ -62,6 +62,10 @@ class CommandErrorHandler(commands.Cog):
             msg = await ctx.reply("引数が足りません")
             await self.autodel_msg(msg)
 
+        elif isinstance(error, commands.InvalidEndOfQuotedStringError):
+            msg = await ctx.reply("無効な終端文字エラー")
+            await self.autodel_msg(msg)
+
         else:
             error = getattr(error, 'original', error)
             print(
