@@ -464,6 +464,8 @@ class ReactionAggregator(commands.Cog):
             reaction (ReactionParameter): リアクション集計
         """
         channel = self.bot.get_channel(reaction.channel_id)
+        if channel is None:
+            return
         url = self.c.get_msgurl_from_reaction(reaction)
         guild = self.bot.get_guild(reaction.guild_id)
         roles = [
