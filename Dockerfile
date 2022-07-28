@@ -12,8 +12,8 @@ RUN set -x && \
     python3 -m pip install -U setuptools && \
     git clone https://github.com/being24/sagumo.git && \
     python3 -m pip install -r ./sagumo/requirements.txt && \
-    python -m pip install -U git+https://github.com/Rapptz/discord-ext-menus && \
-    pip install git+https://github.com/Rapptz/discord.py && \
+    python -m pip install git+https://github.com/Rapptz/discord-ext-menus@fbb8803779373357e274e1540b368365fd9d8074 && \
+    pip install git+https://github.com/Rapptz/discord.py@45d498c1b76deaf3b394d17ccf56112fa691d160 && \
     chmod 0700 ./sagumo/*.sh && \
     chmod 0700 ./sagumo/bot.py && \
     apk del build-base  && \

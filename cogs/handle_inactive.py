@@ -115,6 +115,7 @@ class InactiveDetector(commands.Cog):
 
         await ctx.reply(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
+    # IDにしないとだめ
     @commands.command(aliases=['remove_active'],
                       description='指定された役職のメンバーをDBから削除するコマンド')
     async def remove_member_watching(self, ctx, member: discord.Member):
@@ -164,8 +165,12 @@ class InactiveDetector(commands.Cog):
             title='非アクティブメンバー判定のメンバー一覧',
             description=f'{len(inactive_list)}人のメンバーの活動が3ヶ月以上確認されていません。')
 
+        # 抜けてるとエラー履くので対応する
         for user_id in inactive_list:
             user = self.bot.get_user(user_id)
+            if user is None:
+                print(f'{user_id}が見つかりませんでした')
+                continue
             embed.add_field(name=user.name, value=user.mention)
 
         # 送信先を取得する
