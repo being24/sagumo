@@ -1,62 +1,70 @@
-# !/usr/bin/env python3
+import logging
 
 import discord
+from discord import app_commands
 from discord.ext import commands
+from discord.ui import Modal, TextInput
 
-from cogs.utils.common import CommonUtil
-
-from .utils.confirm import Confirm
+from .utils.common import CommonUtil
 
 
-class AnnounceManager(commands.Cog):
+class MyModal(commands.Cog, name="Modal管理用cog"):
     """
-    アナウンス用のcog
+    Modal管理
     """
 
     def __init__(self, bot):
-        self.bot = bot
+        self.bot: commands.Bot = bot
         self.c = CommonUtil()
 
-    @commands.group(name='announce', description='アナウンスを行います',
-                    invoke_without_command=True, hidden=True)
-    @commands.has_permissions(ban_members=True)
-    async def announce(self, ctx: commands.Context, message: str):
-        """アナウンスを行うコマンド"""
-        if ctx.invoked_subcommand is None:
-            await ctx.send(message)
-            notify_msg = await ctx.reply('送信しました')
-            await self.c.autodel_msg(notify_msg)
-            await self.c.autodel_msg(ctx.message)
+        self.logger = logging.getLogger("discord")
 
-    @announce.command(name='edit', description='アナウンスを編集します')
-    async def announce_edit(self, ctx: commands.Context, target_id: int):
-        """アナウンスを編集するコマンド"""
+        self.ctx_menu = app_commands.ContextMenu(
+            name="edit message",
+            callback=self.react,
+        )
+        self.bot.tree.add_command(self.ctx_menu)
 
-        # process_commandで分割しちゃってるので再取得
-        raw_msg = await ctx.channel.fetch_message(ctx.message.id)
-        # 内容だけ取り出す
-        content = raw_msg.content[raw_msg.content.find(f'{target_id}') + len(f'{target_id}') + 1:]
+    @app_commands.command(name="proxy_transmission", description="代理投稿を行うコマンド")
+    @app_commands.default_permissions(manage_guild=True)
+    @app_commands.guild_only()
+    async def proxy_transmission(self, interaction: discord.Interaction):
+        class ProxyModal(Modal, title="代理投稿を行います"):
+            answer = TextInput(label="Input", style=discord.TextStyle.paragraph)
 
-        # 対象を取得
-        msg = await ctx.fetch_message(target_id)
+            async def on_submit(self, interaction: discord.Interaction):
+                if not isinstance(interaction.channel, discord.TextChannel):
+                    await interaction.response.send_message("テキストチャンネル限定です", ephemeral=True)
+                    return
+                await interaction.response.send_message("代理投稿を行いました", ephemeral=True)
+                await interaction.channel.send(self.answer.value)
 
-        # BOTのメッセージじゃなければ弾く
-        if msg.author.id != self.bot.application_id:
-            notify_msg = await ctx.reply('このメッセージは編集できません')
-            await self.c.autodel_msg(notify_msg)
+        await interaction.response.send_modal(ProxyModal())
+
+    @app_commands.default_permissions(manage_guild=True)
+    @app_commands.guild_only()
+    async def react(self, interaction: discord.Interaction, message: discord.Message):
+        if self.bot.user is None:
+            self.logger.info("bot.userがNoneです")
             return
 
-        # 編集
-        confirm = await Confirm(f'ID : {target_id}を編集しましか？').prompt(ctx)
-        if confirm:
-            await msg.edit(content=content)
-            notify_msg = await ctx.reply(f"ID : {target_id}は{ctx.author}により編集されました")
-        else:
-            notify_msg = await ctx.send(f"ID : {target_id}の編集を中止しました")
+        if self.bot.user.id != message.author.id:
+            await interaction.response.send_message("自分のメッセージのみ編集できます", ephemeral=True)
+            return
 
-        await self.c.autodel_msg(notify_msg)
-        await self.c.autodel_msg(ctx.message)
+        class EditModal(Modal, title="編集を行います"):
+            answer = TextInput(label="Input", style=discord.TextStyle.paragraph, default=message.content)
+
+            async def on_submit(self, interaction: discord.Interaction):
+                if not isinstance(interaction.channel, discord.TextChannel):
+                    await interaction.response.send_message("テキストチャンネル限定です", ephemeral=True)
+                    return
+                await interaction.response.send_message("投稿の編集を行いました", ephemeral=True)
+                # await interaction.channel.send(self.answer.value)
+                await message.edit(content=self.answer.value)
+
+        await interaction.response.send_modal(EditModal())
 
 
-def setup(bot):
-    bot.add_cog(AnnounceManager(bot))
+async def setup(bot):
+    await bot.add_cog(MyModal(bot))

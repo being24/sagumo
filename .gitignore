@@ -129,8 +129,7 @@ dmypy.json
 .pyre/
 
 
-.vscode
-*.log
+.vscode/
 *.csv
 *.ini
 token
@@ -138,5 +137,5 @@ token
 !pyrightconfig.json
 *.sqlite3
 *.ipynb
-
-.VSCodeCounter
+.env.*
+discord.log*
