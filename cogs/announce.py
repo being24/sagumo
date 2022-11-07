@@ -21,7 +21,7 @@ class MyModal(commands.Cog, name="Modal管理用cog"):
 
         self.ctx_menu = app_commands.ContextMenu(
             name="edit message",
-            callback=self.react,
+            callback=self.edit_message,
         )
         self.bot.tree.add_command(self.ctx_menu)
 
@@ -29,6 +29,8 @@ class MyModal(commands.Cog, name="Modal管理用cog"):
     @app_commands.default_permissions(manage_guild=True)
     @app_commands.guild_only()
     async def proxy_transmission(self, interaction: discord.Interaction):
+        """代理投稿を行うコマンド"""
+
         class ProxyModal(Modal, title="代理投稿を行います"):
             answer = TextInput(label="Input", style=discord.TextStyle.paragraph)
 
@@ -37,13 +39,18 @@ class MyModal(commands.Cog, name="Modal管理用cog"):
                     await interaction.response.send_message("テキストチャンネル限定です", ephemeral=True)
                     return
                 await interaction.response.send_message("代理投稿を行いました", ephemeral=True)
-                await interaction.channel.send(self.answer.value)
+                try:
+                    await interaction.channel.send(self.answer.value)
+                except discord.Forbidden:
+                    await interaction.response.send_message("メッセージの送信に失敗しました。Forbidden", ephemeral=True)
+                except discord.HTTPException:
+                    await interaction.response.send_message("メッセージの送信に失敗しました。HTTPException", ephemeral=True)
 
         await interaction.response.send_modal(ProxyModal())
 
     @app_commands.default_permissions(manage_guild=True)
     @app_commands.guild_only()
-    async def react(self, interaction: discord.Interaction, message: discord.Message):
+    async def edit_message(self, interaction: discord.Interaction, message: discord.Message):
         if self.bot.user is None:
             self.logger.info("bot.userがNoneです")
             return

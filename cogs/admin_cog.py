@@ -102,9 +102,9 @@ class Admin(commands.Cog, name="管理用コマンド群"):
     @tasks.loop(minutes=1.0)
     async def auto_backup(self):
         now = datetime.now(self.local_timezone)
-        now_HM = now.strftime("%H:%M")
+        now_hm = now.strftime("%H:%M")
 
-        if now_HM == "04:00":
+        if now_hm == "04:00":
             channel = self.bot.get_channel(745128369170939965)
 
             data_files = list(self.master_path.glob("data/*.sqlite3"))
