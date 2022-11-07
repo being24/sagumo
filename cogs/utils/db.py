@@ -8,7 +8,3 @@ data_path = data_path.resolve()
 db_path = data_path
 db_path /= "./data.sqlite3"
 engine = create_async_engine(f"sqlite+aiosqlite:///{db_path}", echo=False)
-
-# loop = asyncio.get_event_loop()
-# conn = loop.run_until_complete(engine.connect())
-# loop.run_until_complete(conn.close())
