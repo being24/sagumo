@@ -1,20 +1,17 @@
 import logging
-import typing
-from datetime import datetime
-from zoneinfo import ZoneInfo
 
 import discord
-import tzlocal
+from discord.ext import commands
 
 from cogs.utils.reaction_aggregation_manager import ReactionParameter
 
 from .setting_manager import SettingManager
 
 
+# TODO: migrate from tzlocal to zoneinfo
 class CommonUtil:
     def __init__(self):
         self.setting_mng = SettingManager()
-        self.local_timezone = tzlocal.get_localzone()
 
     async def is_bot_user(self, guild: discord.Guild, command_user: discord.Member) -> bool:
         """そのサーバーのBOT_user役職を持っているか判定する関数
@@ -29,11 +26,11 @@ class CommonUtil:
         Memo:
             管理者は使用者の権限も持つことにする
         """
-        guild_DB = await self.setting_mng.get_guild(guild.id)
-        if guild_DB is None:
+        guild_db = await self.setting_mng.get_guild(guild.id)
+        if guild_db is None:
             return False
-        bot_user_role = guild.get_role(guild_DB.bot_user_id)
-        bot_manager_role = guild.get_role(guild_DB.bot_manager_id)
+        bot_user_role = guild.get_role(guild_db.bot_user_id)
+        bot_manager_role = guild.get_role(guild_db.bot_manager_id)
 
         if any([role in command_user.roles for role in [bot_manager_role, bot_user_role]]):
             return True
@@ -50,10 +47,10 @@ class CommonUtil:
         Returns:
             bool: 入ってたらTrue、入ってなかったらFalse
         """
-        guild_DB = await self.setting_mng.get_guild(guild.id)
-        if guild_DB is None:
+        guild_db = await self.setting_mng.get_guild(guild.id)
+        if guild_db is None:
             return False
-        bot_manager_role = guild.get_role(guild_DB.bot_manager_id)
+        bot_manager_role = guild.get_role(guild_db.bot_manager_id)
         if bot_manager_role in command_user.roles:
             return True
         else:
@@ -92,7 +89,7 @@ class CommonUtil:
         return url
 
     @staticmethod
-    def return_member_or_role(guild: discord.Guild, id: int) -> typing.Union[discord.Member, discord.Role, None]:
+    def return_member_or_role(guild: discord.Guild, id: int) -> discord.Role | discord.Member:
         """メンバーか役職オブジェクトを返す関数
 
         Args:
@@ -106,51 +103,51 @@ class CommonUtil:
         if user_or_role is None:
             user_or_role = guild.get_member(id)
 
+        if user_or_role is None:
+            raise ValueError(f"IDが不正です。ID:{id}")
+
         return user_or_role
 
-    async def has_bot_user(self, ctx) -> bool:
-        """BOT使用者であるか？
+    async def has_bot_user(self, guild: discord.Guild | None, command_user: discord.Member | discord.User) -> bool:
+        """bot_userかどうか判定する関数
 
         Args:
-            ctx ([type]): いつもの
+            guild (discord.Guild): サーバーのギルドオブジェクト
+            command_user (discord.Member): コマンド使用者のメンバーオブジェクト
 
         Returns:
-            bool: 使用者ならTそうでなければF
+            bool: BOT_userならTrue、そうでなければFalse
         """
-        if not await self.is_bot_user(ctx.guild, ctx.author):
-            notify_msg = await ctx.send(f"{ctx.author.mention}\nコマンドの使用権限を持っていません")
-            await self.delete_after(notify_msg)
+
+        if isinstance(command_user, discord.User):
+            return False
+
+        if not isinstance(guild, discord.Guild):
+            return False
+
+        if not await self.is_bot_user(guild, command_user):
             return False
         else:
             return True
 
-    async def has_bot_manager(self, ctx) -> bool:
-        """BOT管理者であるか？
+    async def has_bot_manager(self, guild: discord.Guild | None, command_user: discord.Member | discord.User) -> bool:
+        """bot_managerかどうか判定する関数
 
         Args:
-            ctx ([type]): いつもの
+            guild (discord.Guild): サーバーのギルドオブジェクト
+            command_user (discord.Member): コマンド使用者のメンバーオブジェクト
 
         Returns:
-            bool: 管理者ならTそうでなければF
+            bool: BOT_userならTrue、そうでなければFalse
         """
-        if not await self.is_bot_manager(ctx.guild, ctx.author):
-            notify_msg = await ctx.send(f"{ctx.author.mention}\nコマンドの使用権限を持っていません")
-            await self.delete_after(notify_msg)
+
+        if isinstance(command_user, discord.User):
+            return False
+
+        if not isinstance(guild, discord.Guild):
+            return False
+
+        if not await self.is_bot_manager(guild, command_user):
             return False
         else:
             return True
-
-    def convert_utc_into_jst(self, time: datetime) -> datetime:
-        """naive/awareなUTCをawareなJSTにする関数
-
-        Args:
-            created_at (datetime): naiveなUTC
-
-        Returns:
-            datetime: awareなJST
-        """
-        if time.tzinfo is None:
-            time = pytz.utc.localize(time)
-
-        time_jst = time.astimezone(pytz.timezone(self.local_timezone.zone))
-        return time_jst
