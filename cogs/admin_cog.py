@@ -16,7 +16,7 @@ class Admin(commands.Cog, name="管理用コマンド群"):
     """
 
     def __init__(self, bot):
-        self.bot = bot
+        self.bot: commands.Bot = bot
         self.c = CommonUtil()
 
         self.master_path = pathlib.Path(__file__).parents[1]
