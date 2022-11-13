@@ -18,16 +18,16 @@ from .utils.setting_manager import SettingManager
 c = CommonUtil()
 
 
-def app_has_bot_manager(interaction: discord.Interaction):
-    return c.has_bot_manager(interaction.guild, interaction.user)
+async def app_has_bot_manager(interaction: discord.Interaction) -> bool:
+    return await c.has_bot_manager(interaction.guild, interaction.user)
 
 
-def app_has_bot_user(interaction: discord.Interaction):
-    return c.has_bot_user(interaction.guild, interaction.user)
+async def app_has_bot_user(interaction: discord.Interaction) -> bool:
+    return await c.has_bot_user(interaction.guild, interaction.user)
 
 
-def context_has_bot_manager(ctx: commands.Context):
-    return c.has_bot_manager(ctx.guild, ctx.author)
+async def context_has_bot_manager(ctx: commands.Context) -> bool:
+    return await c.has_bot_manager(ctx.guild, ctx.author)
 
 
 class ReactionList(ListPageSource):
@@ -40,6 +40,8 @@ class ReactionList(ListPageSource):
         len_data = len(self.entries)
 
         embed = discord.Embed(title="集計中のリアクションは以下の通りです", description=f"本サーバーでは{len_data}件集計中", color=0x0088FF)
+        if self.ctx.guild is None or self.ctx.guild.me.avatar is None:
+            return
         embed.set_thumbnail(url=self.ctx.guild.me.avatar.replace(format="png").url)
 
         embed.set_footer(text=f"{offset:,} - {min(len_data, offset+self.per_page-1):,} of {len_data:,} records.")
@@ -89,7 +91,7 @@ class ReactionAggregator(commands.Cog):
     """
 
     def __init__(self, bot):
-        self.bot = bot
+        self.bot: commands.Bot = bot
 
         self.setting_mng = SettingManager()
         self.aggregation_mng = AggregationManager()
@@ -98,6 +100,10 @@ class ReactionAggregator(commands.Cog):
 
         self.reaction_reminder.stop()
         self.reaction_reminder.start()
+
+    async def setup_hook(self):
+        # self.bot.tree.copy_global_to(guild=MY_GUILD)
+        pass
 
     async def start_paginating(self, ctx: commands.Context, reaction_list_of_guild):
         if reaction_list_of_guild is None:
@@ -119,6 +125,8 @@ class ReactionAggregator(commands.Cog):
         if isinstance(channel, discord.Thread):
             if channel.archived:
                 return
+        if not isinstance(channel, discord.TextChannel):
+            return
         try:
             msg = await channel.fetch_message(message_id)
             # await msg.clear_reactions()
@@ -134,6 +142,8 @@ class ReactionAggregator(commands.Cog):
         await self.aggregation_mng.create_table()
         await self.setting_mng.create_table()
 
+        await self.bot.tree.sync()
+
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if not self.reaction_reminder.is_running():
@@ -148,6 +158,14 @@ class ReactionAggregator(commands.Cog):
         if reaction_data.target_value == reaction_data.sum and reaction_data.matte == 0:
             channel = self.bot.get_channel(reaction_data.channel_id)
             guild = self.bot.get_guild(reaction_data.guild_id)
+            if channel is None or guild is None:
+                self.logger.warning(
+                    f"channel or guild is None. channel_id: {reaction_data.channel_id}, guild_id: {reaction_data.guild_id}"
+                )
+                return
+
+            if not isinstance(channel, discord.TextChannel):
+                return
             command_msg = await channel.fetch_message(reaction_data.command_id)
 
             url = c.get_msg_url_from_reaction(reaction_data)
@@ -175,6 +193,10 @@ class ReactionAggregator(commands.Cog):
 
         elif reaction_data.notified_at is not Null and reaction_data.target_value > reaction_data.sum:
             channel = self.bot.get_channel(reaction_data.channel_id)
+
+            if not isinstance(channel, discord.TextChannel):
+                return
+
             msg = await channel.fetch_message(reaction_data.message_id)
             await msg.edit(content=msg.content.replace("\n\t終了しました", ""))
 
@@ -293,8 +315,17 @@ class ReactionAggregator(commands.Cog):
             await interaction.response.send_message("集計中のリアクションはありません")
             return
 
-        ctx: commands.Context = await self.bot.get_context(interaction.message)
+        await interaction.response.send_message("リアクション集計一覧を表示します")
+        message = await interaction.original_response()
+        await c.delete_after(message, 1)
+
+        ctx: commands.Context = await self.bot.get_context(message)
         await self.start_paginating(ctx, reaction_list_of_guild)
+
+    @list_reaction.error
+    async def list_reaction_error(self, interaction: discord.Interaction, error):
+        if isinstance(error, commands.CheckFailure):
+            await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
 
     @app_commands.command(name="remove_reaction")
     @app_commands.check(app_has_bot_user)
@@ -316,6 +347,11 @@ class ReactionAggregator(commands.Cog):
         else:
             notify_msg = await ctx.send(f"ID : {message_id}はリアクション集計対象ではありません")
             await c.delete_after(notify_msg)
+
+    @remove_reaction.error
+    async def remove_reaction_error(self, interaction: discord.Interaction, error):
+        if isinstance(error, commands.CheckFailure):
+            await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
 
     @commands.command(aliases=["add_role"], description="特定の役職持ちに特定のリアクションを付与するコマンド")
     async def add_role_for_init(self, ctx: commands.Context, add_role: discord.Role, *has_role: discord.Role):
