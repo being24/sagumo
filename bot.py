@@ -34,7 +34,7 @@ class MyBot(commands.Bot):
             print(self.user.id)
         print("------")
         logger.warning("rebooted")
-        await bot.change_presence(activity=discord.Game(name="Thread管理中"))
+        await bot.change_presence(activity=discord.Game(name="リアクション集計中"))
 
     async def on_message(self, message):
         message_contents = message.content.split("\n")
