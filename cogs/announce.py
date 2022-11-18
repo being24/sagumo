@@ -72,6 +72,64 @@ class MyModal(commands.Cog, name="Modal管理用cog"):
 
         await interaction.response.send_modal(EditModal())
 
+    @app_commands.command(name="disposition_record")
+    @app_commands.default_permissions(manage_guild=True)
+    @app_commands.guild_only()
+    async def disposition_record(self, interaction: discord.Interaction, user: discord.User):
+        """処分記録を行うコマンド
+
+        Args:
+            interaction (discord.Interaction): interaction
+            user_id (int): 処分対象のユーザーID
+        """
+        # try:
+        #     user = await self.bot.fetch_user(user_id)
+        # except discord.NotFound:
+        #     await interaction.response.send_message("ユーザーが見つかりませんでした", ephemeral=True)
+        #     return
+        if user is None:
+            await interaction.response.send_message("ユーザーが見つかりませんでした", ephemeral=True)
+            return
+
+        class ProxyModal(Modal, title="処分記録を投稿します"):
+            desc = TextInput(label="概要", style=discord.TextStyle.paragraph)
+            corresponding_part = TextInput(label="該当箇所", style=discord.TextStyle.paragraph)
+            discussion_part = TextInput(label="議論箇所", style=discord.TextStyle.paragraph)
+            deal = TextInput(label="対応", style=discord.TextStyle.paragraph)
+
+            async def on_submit(self, interaction: discord.Interaction):
+                if not isinstance(interaction.channel, discord.TextChannel):
+                    await interaction.response.send_message("テキストチャンネル限定です", ephemeral=True)
+                    return
+
+                today = discord.utils.utcnow().strftime("%Y/%m/%d")
+                embed = discord.Embed(
+                    title=f"{today}", description=f"desc : {self.desc.value}", color=discord.Color.red()
+                )
+                embed.add_field(name="・該当箇所", value=self.corresponding_part.value, inline=False)
+                embed.add_field(name="・議論箇所", value=self.discussion_part.value, inline=False)
+                embed.add_field(name="・対応", value=self.deal.value, inline=False)
+                embed.set_author(name=f"{user.name} ID:{user.id}", icon_url=user.display_avatar)
+
+                try:
+                    await interaction.channel.send(embed=embed)
+                except discord.Forbidden:
+                    await interaction.response.send_message("メッセージの送信に失敗しました。Forbidden", ephemeral=True)
+                except discord.HTTPException:
+                    await interaction.response.send_message("メッセージの送信に失敗しました。HTTPException", ephemeral=True)
+
+                await interaction.response.send_message("処分記録を行いました", ephemeral=True)
+
+        await interaction.response.send_modal(ProxyModal())
+
+    @disposition_record.error
+    async def disposition_record_error(self, interaction: discord.Interaction, error):
+        if isinstance(error, commands.CheckFailure):
+            await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
+        if not isinstance(interaction.channel, discord.TextChannel):
+            return
+        await interaction.response.send_message(f"エラーが発生しました。{error}")
+
 
 async def setup(bot):
     await bot.add_cog(MyModal(bot))
