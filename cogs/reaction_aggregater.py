@@ -1,21 +1,23 @@
 import asyncio
 import logging
-import typing
 from datetime import datetime, timedelta
 
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
-from discord.ext.commands.errors import BadArgument, BadUnionArgument, CommandInvokeError
 from discord.ext.menus import ListPageSource, MenuPages
 from sqlalchemy.sql.elements import Null
 
 from .utils.common import CommonUtil
-from .utils.confirm import Confirm
+
+# from .utils.confirm import Confirm
 from .utils.reaction_aggregation_manager import AggregationManager, ReactionParameter
 from .utils.setting_manager import SettingManager
 
 c = CommonUtil()
+logger = logging.getLogger("discord")
+
+target_value_dict = {}
 
 
 async def app_has_bot_manager(interaction: discord.Interaction) -> bool:
@@ -28,6 +30,12 @@ async def app_has_bot_user(interaction: discord.Interaction) -> bool:
 
 async def context_has_bot_manager(ctx: commands.Context) -> bool:
     return await c.has_bot_manager(ctx.guild, ctx.author)
+
+
+class NotSameUserError(Exception):
+    """Interactionの実行者とappコマンドの実行者が異なる場合のエラー"""
+
+    pass
 
 
 class ReactionList(ListPageSource):
@@ -51,12 +59,6 @@ class ReactionList(ListPageSource):
 
             url = c.get_msg_url_from_reaction(reaction)
 
-            # target = []
-            # for target_id in reaction.ping_id:
-            #     member_or_role = self.return_member_or_role(self.ctx.guild, target_id)
-            #     if member_or_role is not None:
-            #         target.append(f"{member_or_role.mention} ")
-
             target = " ".join([f"{c.return_member_or_role(self.ctx.guild, id).mention}" for id in reaction.ping_id])
 
             if reaction.matte:
@@ -65,11 +67,15 @@ class ReactionList(ListPageSource):
                 matte = ""
 
             reaction_author = self.ctx.guild.get_member(reaction.author_id)
+            if reaction_author is None:
+                author_mention = "不明"
+            else:
+                author_mention = reaction_author.mention
 
             if target == "":
-                val = f"**ID** : {reaction.message_id} by : {reaction_author.mention} progress : {reaction.sum}/{reaction.target_value}{matte}\ntime : {time} [link.]({url})"
+                val = f"**ID** : {reaction.message_id} by : {author_mention} progress : {reaction.sum}/{reaction.target_value}{matte}\ntime : {time} [link.]({url})"
             else:
-                val = f"**ID** : {reaction.message_id} by : {reaction_author.mention} progress : {reaction.sum}/{reaction.target_value}{matte}\ntarget: {target} time : {time} [link.]({url})"
+                val = f"**ID** : {reaction.message_id} by : {author_mention} progress : {reaction.sum}/{reaction.target_value}{matte}\ntarget: {target} time : {time} [link.]({url})"
 
             embed.add_field(name=f"{num+offset}番目", value=f"{val}", inline=False)
 
@@ -85,6 +91,96 @@ class ReactionList(ListPageSource):
         return await self.write_page(menu, entries)
 
 
+class Select(discord.ui.MentionableSelect):
+    def __init__(self):
+        super().__init__(placeholder="対象を選択してください", min_values=0, max_values=25)
+        self.aggregation_mng = AggregationManager()
+
+    async def callback(self, interaction: discord.Interaction):
+        # select menuを無効にする
+        for item in self.view.children:
+            item.disabled = True
+        await self.view.message.edit(view=self.view)
+
+        target_value = target_value_dict.pop(self.custom_id)
+        if target_value is None:
+            logger.warn("target_value is None")
+            return
+
+        insert_roles_id = [role_or_member.id for role_or_member in self.values]
+
+        first_msg = f"リアクション集計を行います: 目標リアクション数 : **{target_value}**"
+
+        if len(insert_roles_id) > 0:
+            mid_msg = f"指定された役職/ユーザー : {' '.join([role_or_member.mention for role_or_member in self.values])}\n"
+        else:
+            mid_msg = ""
+
+        insert_roles_str = ",".join([str(id) for id in insert_roles_id])
+
+        last_msg = "本メッセージにリアクションをつけてください"
+
+        await interaction.response.send_message(f"{first_msg}\n{mid_msg}{last_msg}")
+        msg = await interaction.original_response()
+
+        now = discord.utils.utcnow()
+
+        if interaction.guild is None:
+            logger.warn("interaction.guild is None")
+            return
+
+        if interaction.channel is None:
+            logger.warn("interaction.channel is None")
+            return
+
+        await self.aggregation_mng.register_aggregation(
+            message_id=msg.id,
+            command_id=interaction.id,
+            guild_id=interaction.guild.id,
+            channel_id=interaction.channel.id,
+            target_value=target_value,
+            author_id=interaction.user.id,
+            created_at=now,
+            ping_id=insert_roles_str,
+        )
+
+
+class SelectView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=120)
+        self.add_item(Select())
+
+    async def on_timeout(self):
+        # タイムアウトしたら消す
+        for item in self.children:
+            item.disabled = True  # type: ignore
+        await self.message.edit(view=self)  # type: ignore
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        # 実行者と選択者が違ったらFalseを返す
+        if interaction.message is None:
+            return False
+
+        if interaction.message.interaction is None:
+            return False
+
+        if interaction.user != interaction.message.interaction.user:
+            raise NotSameUserError("実行者と選択者が違います")
+
+        return True
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item):
+        if isinstance(error, NotSameUserError):
+            await interaction.response.send_message("実行者と選択者が違います", ephemeral=True)
+            return
+        if not isinstance(interaction.channel, discord.TextChannel):
+            return
+        await interaction.channel.send(f"エラーが発生しました。{error}")
+
+    async def wait(self):
+        print("wait")
+
+
 class ReactionAggregator(commands.Cog):
     """
     リアクション集計のカテゴリ
@@ -95,8 +191,6 @@ class ReactionAggregator(commands.Cog):
 
         self.setting_mng = SettingManager()
         self.aggregation_mng = AggregationManager()
-
-        self.logger = logging.getLogger("discord")
 
         self.reaction_reminder.stop()
         self.reaction_reminder.start()
@@ -147,7 +241,7 @@ class ReactionAggregator(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if not self.reaction_reminder.is_running():
-            self.logger.warning("reaction_reminder is not running!")
+            logger.warning("reaction_reminder is not running!")
             self.reaction_reminder.start()
 
     async def judge_and_notice(self, message_id: int):
@@ -159,7 +253,7 @@ class ReactionAggregator(commands.Cog):
             channel = self.bot.get_channel(reaction_data.channel_id)
             guild = self.bot.get_guild(reaction_data.guild_id)
             if channel is None or guild is None:
-                self.logger.warning(
+                logger.warning(
                     f"channel or guild is None. channel_id: {reaction_data.channel_id}, guild_id: {reaction_data.guild_id}"
                 )
                 return
@@ -200,97 +294,35 @@ class ReactionAggregator(commands.Cog):
             msg = await channel.fetch_message(reaction_data.message_id)
             await msg.edit(content=msg.content.replace("\n\t終了しました", ""))
 
-    @commands.command(aliases=["cnt"], description="リアクション集計コマンド")
-    @commands.check(context_has_bot_manager)
-    async def count(
-        self, ctx: commands.Context, target_value: int = 0, *role_or_members: typing.Union[discord.Role, discord.Member]
-    ):
-        """リアクション集計を行うコマンド"""
-        if target_value == 0:
-            await ctx.send("引数を正しく入力してください")
-            return
-
-        if len(role_or_members) == 0:
-            insert_roles_id = []
-        else:
-            insert_roles_id = [role_or_member.id for role_or_member in role_or_members]
-
-        first_msg = f"リアクション集計を行います: 目標リアクション数 : **{target_value}**"
-
-        if len(insert_roles_id) > 0:
-            mid_msg = f"指定された役職/ユーザー : {' '.join([role_or_member.name for role_or_member in role_or_members])}\n"
-        else:
-            mid_msg = ""
-
-        insert_roles_str = ",".join([str(id) for id in insert_roles_id])
-
-        last_msg = "本メッセージにリアクションをつけてください"
-
-        msg = await ctx.reply(f"{first_msg}\n{mid_msg}{last_msg}")
-
-        now = datetime.now()
-
-        await self.aggregation_mng.register_aggregation(
-            message_id=msg.id,
-            command_id=ctx.message.id,
-            guild_id=ctx.guild.id,
-            channel_id=ctx.channel.id,
-            target_value=target_value,
-            author_id=ctx.author.id,
-            created_at=now,
-            ping_id=insert_roles_str,
-        )
-
-    @count.error
-    async def count_error(self, ctx: commands.Context, error):
-        """カウント関数専用のエラーハンドラ
+    @app_commands.command(name="count")
+    @app_commands.check(app_has_bot_manager)
+    @app_commands.guild_only()
+    async def count(self, interaction: discord.Interaction, target_value: int):
+        """リアクション集計を開始するコマンド
 
         Args:
-            ctx (discord.ext.commands.context.Context): いつもの
-            error (discord.ext.commands.CommandError): エラーの内容
+            target_value (int): 集計するリアクションの数
         """
-        if isinstance(error, (BadArgument, BadUnionArgument)):
-            notify_msg = await ctx.send(f"{ctx.author.mention}\n引数エラーです\n順番が間違っていませんか？")
-            await c.delete_after(notify_msg)
-        elif isinstance(error, CommandInvokeError):
-            self.logger.error(error)
-            pass
-        elif isinstance(error, commands.CheckFailure):
-            notify_msg = await ctx.send(f"{ctx.author.mention}\n権限がありません")
-            await c.delete_after(notify_msg)
-            pass
 
-    # @commands.group(aliases=["ls"], description="集計中一覧", invoke_without_command=True)
-    # async def list_reaction(self, ctx):
-    #     """集計中のリアクション一覧を表示するコマンド"""
-    #     if not await c.has_bot_manager(ctx):
-    #         return
+        if target_value <= 0:
+            await interaction.response.send_message("引数を正しく入力してください")
+            return
+        view = SelectView()
+        await interaction.response.send_message("対象を選択してください", view=view)
 
-    #     reaction_list_of_guild = await self.aggregation_mng.get_guild_list(ctx.guild.id)
+        view.message = await interaction.original_response()  # type: ignore
+        target_value_dict[view.children[0].custom_id] = target_value  # type: ignore
 
-    #     if reaction_list_of_guild is None:
-    #         await ctx.send("集計中のリアクションはありません")
-    #         return
-
-    #     reaction_list_of_guild = [reaction for reaction in reaction_list_of_guild if reaction.notified_at is None]
-
-    #     if len(reaction_list_of_guild) == 0:
-    #         await ctx.send("集計中のリアクションはありません")
-    #         return
-
-    #     await self.start_paginating(ctx: commands.Context, reaction_list_of_guild)
-
-    # @list_reaction.command(aliases=["-a"], description="現在DB上にある集計一覧を出力")
-    # async def all(self, ctx):
-    #     """集計中のすべてのリアクション一覧を表示するコマンド"""
-    #     if not await c.has_bot_manager(ctx):
-    #         return
-
-    #     reaction_list_of_guild = await self.aggregation_mng.get_guild_list(ctx.guild.id)
-    #     await self.start_paginating(ctx, reaction_list_of_guild)
+    @count.error
+    async def count_error(self, interaction: discord.Interaction, error):
+        if isinstance(error, commands.CheckFailure):
+            await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
+        if not isinstance(interaction.channel, discord.TextChannel):
+            return
+        await interaction.channel.send(f"エラーが発生しました。{error}")
 
     @app_commands.command(name="list_reaction")
-    @app_commands.check(app_has_bot_manager)
+    @app_commands.check(app_has_bot_user)
     @app_commands.guild_only()
     async def list_reaction(self, interaction: discord.Interaction, all: bool = False):
         """集計中のリアクション一覧を表示するコマンド
@@ -299,7 +331,7 @@ class ReactionAggregator(commands.Cog):
             all (bool, optional): 終了済みの集計も表示するかどうか. Defaults to False.
         """
         if interaction.guild is None:
-            self.logger.error("guild is None @list_reaction")
+            logger.warn("guild is None @list_reaction")
             return
 
         reaction_list_of_guild = await self.aggregation_mng.get_guild_list(interaction.guild.id)
@@ -317,7 +349,7 @@ class ReactionAggregator(commands.Cog):
 
         await interaction.response.send_message("リアクション集計一覧を表示します")
         message = await interaction.original_response()
-        await c.delete_after(message, 1)
+        # await c.delete_after(message, 1)
 
         ctx: commands.Context = await self.bot.get_context(message)
         await self.start_paginating(ctx, reaction_list_of_guild)
@@ -326,13 +358,14 @@ class ReactionAggregator(commands.Cog):
     async def list_reaction_error(self, interaction: discord.Interaction, error):
         if isinstance(error, commands.CheckFailure):
             await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
+        if not isinstance(interaction.channel, discord.TextChannel):
+            return
+        await interaction.channel.send(f"エラーが発生しました。{error}")
 
     @app_commands.command(name="remove_reaction")
-    @app_commands.check(app_has_bot_user)
+    @app_commands.check(app_has_bot_manager)
     @app_commands.guild_only()
-    async def remove_reaction(
-        self, interaction: discord.Interaction, message_id: int
-    ):  # TODO: ここのmessage_idを今集計中のやつを列挙する形にしたい
+    async def remove_reaction(self, interaction: discord.Interaction, message_id: int):
         """DBから情報を削除し、集計を中止するコマンド"""
 
         if await self.aggregation_mng.is_exist(message_id):
@@ -352,33 +385,139 @@ class ReactionAggregator(commands.Cog):
     async def remove_reaction_error(self, interaction: discord.Interaction, error):
         if isinstance(error, commands.CheckFailure):
             await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
-
-    @commands.command(aliases=["add_role"], description="特定の役職持ちに特定のリアクションを付与するコマンド")
-    async def add_role_for_init(self, ctx: commands.Context, add_role: discord.Role, *has_role: discord.Role):
-        """bot管理者つけるために特定の役職持ちに役職を付与するコマンド"""
-        if not await c.has_bot_manager(ctx):
+        if not isinstance(interaction.channel, discord.TextChannel):
             return
-        target_members = []
-        for role in has_role:
-            temp_members = [member for member in ctx.guild.members if role in member.roles]
-            target_members.extend(temp_members)
+        await interaction.channel.send(f"エラーが発生しました。{error}")
 
-        target_members = list(set(target_members))
+    @app_commands.command(name="add_role")
+    @app_commands.check(app_has_bot_manager)
+    @app_commands.guild_only()
+    async def add_role(self, interaction: discord.Interaction, add_role: discord.Role, has_role: discord.Role):
+        """特定の役職持ちに特定のリアクションを付与するコマンド
+
+        Args:
+            interaction (discord.Interaction): interaction
+            add_role (discord.Role): 対象に付与する役職
+            has_role (discord.Role): この役職を持っている人に付与する
+        """
+
+        target_members = [member for member in has_role.members if add_role not in member.roles]
+
+        if len(target_members) == 0:
+            await interaction.response.send_message("対象者はいません")
+            return
+
+        await interaction.response.send_message(
+            f"{len(target_members)}人に{add_role.name}を付与します",
+        )
+
+        msg = await interaction.original_response()
+
+        if interaction.guild is None:
+            logger.warn("guild is None @add_role")
+            return
 
         for member in target_members:
             try:
-                await member.add_roles(add_role, reason=f"{ctx.me}による自動付与")
-                msg = await ctx.reply(f"{member}へ{add_role}を付与しました")
-                await c.delete_after(msg)
+                await member.add_roles(add_role, reason=f"{interaction.guild.me}による自動付与")
+                msg = await interaction.followup.send(f"{member.name}に{add_role.name}を付与しました", ephemeral=True)
+                if msg is not None:
+                    await c.delete_after(msg)
                 await asyncio.sleep(0.3)
             except discord.Forbidden:
-                msg = await ctx.reply(f"{member}への{add_role}に失敗しました。権限不足です")
-                await c.delete_after(msg)
+                msg = await interaction.followup.send(f"{member.name}への{add_role}に失敗しました。権限不足です")
+                if msg is not None:
+                    await c.delete_after(msg)
             except BaseException as e:
-                msg = await ctx.reply(f"{member}への{add_role}に失敗しました。{e}")
-                await c.delete_after(msg, second=10)
+                msg = await interaction.followup.send(f"{member.name}への{add_role}に失敗しました。{e}")
+                if msg is not None:
+                    await c.delete_after(msg)
 
-        await ctx.reply("完了しました")
+        await interaction.followup.send("付与が完了しました")
+
+    @add_role.error
+    async def add_role_error(self, interaction: discord.Interaction, error):
+        if isinstance(error, commands.CheckFailure):
+            await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
+        if not isinstance(interaction.channel, discord.TextChannel):
+            return
+        await interaction.channel.send(f"エラーが発生しました。{error}")
+
+    @app_commands.command(name="register_manage_role")
+    @app_commands.default_permissions(manage_guild=True)
+    @app_commands.guild_only()
+    async def register_manage_role(
+        self, interaction: discord.Interaction, bot_manager: discord.Role, bot_user: discord.Role
+    ):
+        """bot管理者とbot使用者を登録するコマンド、順番注意
+
+        Args:
+            interaction (discord.Interaction): interaction
+            bot_manager (discord.Role): 沙雲の管理権限を持たせる役職
+            bot_user (discord.Role): 沙雲の使用権限を持たせる役職
+        """
+
+        if interaction.guild is None:
+            logger.warn("guild is None @sagumo_initialization")
+            return
+
+        if await self.setting_mng.is_exist(interaction.guild.id):
+            await self.setting_mng.update_guild(
+                guild_id=interaction.guild.id, bot_manager_id=bot_manager.id, bot_user_id=bot_user.id
+            )
+            await interaction.response.send_message(
+                f"{interaction.guild}のbot管理者に{bot_manager.mention}を、bot操作者に{bot_user.mention}に更新しました",
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+        else:
+            await self.setting_mng.register_guild(
+                guild_id=interaction.guild.id, bot_manager_id=bot_manager.id, bot_user_id=bot_user.id
+            )
+            await interaction.response.send_message(
+                f"{interaction.guild}のbot管理者に{bot_manager.mention}を、bot操作者に{bot_user.mention}を登録しました",
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+
+    @register_manage_role.error
+    async def register_manage_role_error(self, interaction: discord.Interaction, error):
+        if isinstance(error, commands.CheckFailure):
+            await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
+        if not isinstance(interaction.channel, discord.TextChannel):
+            return
+        await interaction.channel.send(f"エラーが発生しました。{error}")
+
+    @app_commands.command(name="show_manage_role")
+    @app_commands.default_permissions(manage_guild=True)
+    @app_commands.guild_only()
+    async def show_manage_role(self, interaction: discord.Interaction):
+        """bot管理者とbot使用者を表示するコマンド
+
+        Args:
+            interaction (discord.Interaction): interaction
+        """
+        if interaction.guild is None:
+            logger.warn("guild is None @sagumo_initialization")
+            return
+
+        if guild_setting := await self.setting_mng.get_guild(interaction.guild.id):
+            bot_manager = c.return_member_or_role(guild=interaction.guild, id=guild_setting.bot_manager_id)
+            bot_user = c.return_member_or_role(guild=interaction.guild, id=guild_setting.bot_user_id)
+
+            await interaction.response.send_message(
+                f"{interaction.guild}のbot管理者は{bot_manager.mention}、bot操作者は{bot_user.mention}です",
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+
+        else:
+            await interaction.response.send_message(f"{interaction.guild}のbot管理者とbot操作者は登録されていません")
+
+    @show_manage_role.error
+    async def show_manage_role_error(self, interaction: discord.Interaction, error):
+        if isinstance(error, commands.CheckFailure):
+            await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
+        if not isinstance(interaction.channel, discord.TextChannel):
+            return
+        await interaction.channel.send(f"エラーが発生しました。{error}")
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, reaction: discord.RawReactionActionEvent):
@@ -395,6 +534,9 @@ class ReactionAggregator(commands.Cog):
             member_role_ids = [role.id for role in reaction.member.roles]
             member_role_ids.append(reaction.user_id)
             channel = self.bot.get_channel(reaction.channel_id)
+
+            if not isinstance(channel, discord.TextChannel):
+                return
 
             if len(reaction_data.ping_id) == 0:
                 pass
@@ -430,9 +572,19 @@ class ReactionAggregator(commands.Cog):
         if reaction_data := await self.aggregation_mng.get_aggregation(reaction.message_id):
             message_id = reaction.message_id
             guild = self.bot.get_guild(reaction_data.guild_id)
+            if guild is None:
+                logger.warn("guild is None @on_raw_reaction_remove")
+                return
+
             remove_usr = guild.get_member(reaction.user_id)
+            if remove_usr is None:
+                logger.warn("remove_usr is None @on_raw_reaction_remove")
+                return
 
             channel = self.bot.get_channel(reaction.channel_id)
+            if not isinstance(channel, discord.TextChannel):
+                logger.warn("channel is not TextChannel @on_raw_reaction_remove")
+                return
 
             member_role_ids = [role.id for role in remove_usr.roles]
             member_role_ids.append(reaction.user_id)
@@ -498,10 +650,15 @@ class ReactionAggregator(commands.Cog):
             reaction (ReactionParameter): リアクション集計
         """
         channel = self.bot.get_channel(reaction.channel_id)
-        if channel is None:
+        if not isinstance(channel, discord.TextChannel):
+            logger.warn("channel is not TextChannel @send_remind")
             return
         url = c.get_msg_url_from_reaction(reaction)
         guild = self.bot.get_guild(reaction.guild_id)
+        if guild is None:
+            logger.warn("guild is None @send_remind")
+            return
+
         roles = [c.return_member_or_role(guild, id) for id in reaction.ping_id]
         if len(roles) == 0:
             roles_mention = "None"
@@ -557,10 +714,7 @@ class ReactionAggregator(commands.Cog):
 
     @reaction_reminder.error
     async def error(self, arg):
-        now = discord.utils.utcnow()
-        jst_now = c.convert_utc_into_jst(now)
-        print(jst_now, self.qualified_name, arg)
-        logging.warning(arg)
+        logger.warning(arg)
 
 
 async def setup(bot):
