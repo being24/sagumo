@@ -1,6 +1,7 @@
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
+from zoneinfo import ZoneInfo
 
 import discord
 from discord import app_commands
@@ -43,7 +44,7 @@ class ReactionList(ListPageSource):
         self.ctx = ctx
         super().__init__(data, per_page=10)
 
-    async def write_page(self, menu, fields=[]):
+    async def write_page(self, menu, fields: list[ReactionParameter] = []):
         offset = (menu.current_page * self.per_page) + 1
         len_data = len(self.entries)
 
@@ -55,7 +56,10 @@ class ReactionList(ListPageSource):
         embed.set_footer(text=f"{offset:,} - {min(len_data, offset+self.per_page-1):,} of {len_data:,} records.")
 
         for num, reaction in enumerate(fields):
-            time = reaction.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            # USTのreaction.created_atをJSTに変換
+            created_at = reaction.created_at.astimezone(ZoneInfo("Asia/Tokyo"))
+
+            time = created_at.strftime("%Y-%m-%d %H:%M:%S")
 
             url = c.get_msg_url_from_reaction(reaction)
 
@@ -107,16 +111,23 @@ class Select(discord.ui.MentionableSelect):
             logger.warn("target_value is None")
             return
 
-        insert_roles_id = [role_or_member.id for role_or_member in self.values]
+        if interaction.guild is None:
+            logger.warn("guild is None")
+            return
+
+        # self.valuesから自分自身を除いたidのリストを作成
+        insert_roles_ids = [
+            role_or_member.id for role_or_member in self.values if role_or_member.id != interaction.guild.me.id
+        ]
 
         first_msg = f"リアクション集計を行います: 目標リアクション数 : **{target_value}**"
 
-        if len(insert_roles_id) > 0:
+        if len(insert_roles_ids) > 0:
             mid_msg = f"指定された役職/ユーザー : {' '.join([role_or_member.mention for role_or_member in self.values])}\n"
         else:
             mid_msg = ""
 
-        insert_roles_str = ",".join([str(id) for id in insert_roles_id])
+        insert_roles_str = ",".join([str(id) for id in insert_roles_ids])
 
         last_msg = "本メッセージにリアクションをつけてください"
 
@@ -133,9 +144,13 @@ class Select(discord.ui.MentionableSelect):
             logger.warn("interaction.channel is None")
             return
 
+        if self.view is None:
+            logger.warn("self.view is None")
+            return
+
         await self.aggregation_mng.register_aggregation(
             message_id=msg.id,
-            command_id=interaction.id,
+            command_id=self.view.message.id,
             guild_id=interaction.guild.id,
             channel_id=interaction.channel.id,
             target_value=target_value,
@@ -179,6 +194,24 @@ class SelectView(discord.ui.View):
 
     async def wait(self):
         print("wait")
+
+
+class Confirm(discord.ui.View):
+    def __init__(self):
+        super().__init__()
+        self.value = None
+
+    @discord.ui.button(label="はい", style=discord.ButtonStyle.green)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("はい", ephemeral=True)
+        self.value = True
+        self.stop()
+
+    @discord.ui.button(label="いいえ", style=discord.ButtonStyle.grey)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("いいえ", ephemeral=True)
+        self.value = False
+        self.stop()
 
 
 class ReactionAggregator(commands.Cog):
@@ -260,6 +293,7 @@ class ReactionAggregator(commands.Cog):
 
             if not isinstance(channel, discord.TextChannel):
                 return
+
             command_msg = await channel.fetch_message(reaction_data.command_id)
 
             url = c.get_msg_url_from_reaction(reaction_data)
@@ -271,7 +305,7 @@ class ReactionAggregator(commands.Cog):
             else:
                 roles = " ".join(roles)
 
-            now = datetime.now()
+            now = discord.utils.utcnow()
 
             await self.aggregation_mng.set_value_to_notified(reaction_data.message_id, now)
 
@@ -280,7 +314,13 @@ class ReactionAggregator(commands.Cog):
             embed.add_field(name="集計完了時間", value=f"{now.strftime('%Y-%m-%d %H:%M:%S')}", inline=False)
             embed.set_footer(text=f"target : {roles}")
 
-            await command_msg.reply(embed=embed)
+            author = guild.get_member(reaction_data.author_id)
+            if author is None:
+                author_mention = "None"
+            else:
+                author_mention = author.mention
+
+            await command_msg.reply(f"{author_mention}", embed=embed)
 
             msg = await channel.fetch_message(reaction_data.message_id)
             await msg.edit(content=msg.content + "\n\t終了しました")
@@ -365,20 +405,44 @@ class ReactionAggregator(commands.Cog):
     @app_commands.command(name="remove_reaction")
     @app_commands.check(app_has_bot_manager)
     @app_commands.guild_only()
-    async def remove_reaction(self, interaction: discord.Interaction, message_id: int):
-        """DBから情報を削除し、集計を中止するコマンド"""
+    async def remove_reaction(self, interaction: discord.Interaction, message_id_str: str):
+        """リアクション集計を削除するコマンド
+
+        Args:
+            interaction (discord.Interaction): interaction
+            message_id (str): 削除するリアクション集計のメッセージID
+        """
+
+        message_id = 0
+        if message_id_str.isdecimal():
+            message_id = int(message_id_str)
+
+        if message_id == 0:
+            await interaction.response.send_message("引数を正しく入力してください")
+            return
 
         if await self.aggregation_mng.is_exist(message_id):
-            confirm = await Confirm(f"ID : {message_id}のリアクション集計を終了し、削除しますか？").prompt(ctx)
-            if confirm:
+            if interaction.channel is None:
+                logger.warn("interaction.channel is None @remove_reaction")
+                return
+
+            view = Confirm()
+            await interaction.response.send_message(f"ID : {message_id}のリアクション集計を終了し、削除しますか？", view=view)
+            await view.wait()
+            if view.value is None:
+                await interaction.followup.send("タイムアウトしました")
+            elif view.value:
                 await self.aggregation_mng.remove_aggregation(message_id)
-                await ctx.reply(f"ID : {message_id}は{ctx.author}により削除されました")
-                await self.change_delete_msg(ctx.channel.id, message_id)
+                await interaction.followup.send(f"ID : {message_id}は{interaction.user}により削除されました")
+                await self.change_delete_msg(interaction.channel.id, message_id)
             else:
-                notify_msg = await ctx.send(f"ID : {message_id}の削除を中止しました")
+                await interaction.followup.send(f"ID : {message_id}の削除を中止しました")
+                notify_msg = await interaction.original_response()
                 await c.delete_after(notify_msg)
+
         else:
-            notify_msg = await ctx.send(f"ID : {message_id}はリアクション集計対象ではありません")
+            await interaction.response.send_message(f"ID : {message_id}はリアクション集計対象ではありません")
+            notify_msg = await interaction.original_response()
             await c.delete_after(notify_msg)
 
     @remove_reaction.error
@@ -611,9 +675,11 @@ class ReactionAggregator(commands.Cog):
         if notified_aggregation is None:
             return
 
-        now = datetime.now()
+        now = discord.utils.utcnow()
 
         for reaction in notified_aggregation:
+            if reaction.notified_at is None:
+                continue
             elapsed_time = now - reaction.notified_at
             if elapsed_time.days >= 3:
                 await self.aggregation_mng.remove_aggregation(reaction.message_id)
@@ -629,7 +695,7 @@ class ReactionAggregator(commands.Cog):
         if all_aggregation is None:
             return
 
-        now = datetime.now()
+        now = discord.utils.utcnow()
 
         for reaction in all_aggregation:
             if reaction.sum >= reaction.target_value:
@@ -694,7 +760,7 @@ class ReactionAggregator(commands.Cog):
         if all_aggregation is None:
             return
 
-        now = datetime.now()
+        now = discord.utils.utcnow()
 
         for reaction in all_aggregation:
             elapsed_time = now - reaction.created_at
