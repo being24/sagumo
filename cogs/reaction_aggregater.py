@@ -11,7 +11,6 @@ from sqlalchemy.sql.elements import Null
 
 from .utils.common import CommonUtil
 
-# from .utils.confirm import Confirm
 from .utils.reaction_aggregation_manager import AggregationManager, ReactionParameter
 from .utils.setting_manager import SettingManager
 

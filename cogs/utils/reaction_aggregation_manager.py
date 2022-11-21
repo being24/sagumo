@@ -1,6 +1,5 @@
-# !/usr/bin/env python3
-
 import asyncio
+from zoneinfo import ZoneInfo
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Union
@@ -29,13 +28,13 @@ class ReactionParameter:
     matte: int
     author_id: int
     created_at: datetime
-    notified_at: datetime
+    notified_at: datetime | None
     remind: int
     ping_id: list
 
 
 class ReactionAggregation(Base):
-    __tablename__ = 'reactionaggregation'
+    __tablename__ = "reactionaggregation"
 
     message_id = Column(BigInteger, primary_key=True)  # メッセージID
     guild_id = Column(BigInteger, nullable=False)  # ギルドID
@@ -48,11 +47,10 @@ class ReactionAggregation(Base):
     created_at = Column(DATETIME, nullable=False)  # 集計開始時間
     notified_at = Column(DATETIME)  # 集計完了時間
     remind = Column(Integer, default=None)  # リマインドしたかどうか？
-    ping_id = Column(VARCHAR, default='')  # メンション先のID
+    ping_id = Column(VARCHAR, default="")  # メンション先のID
 
 
-class AggregationManager():
-
+class AggregationManager:
     @staticmethod
     def return_dataclass(db_data) -> ReactionParameter:
         """DBからの情報をデータクラスに変換する関数、もうちょっとなんとかならんか？？？
@@ -65,16 +63,22 @@ class AggregationManager():
             ReactionParameter: データクラス
         """
 
-        '''
+        """
         ping_id_list = []
         guild_id_list_str = guild[0].ping_id.split(',')
         for guild_id_str in guild_id_list_str:
             if guild_id_str != '':
                 id = int(guild_id_str)
                 ping_id_list.append(id)
-        '''
-        ping_id_list = [
-            int(id) for id in db_data[0].ping_id.split(',') if id != '']
+        """
+        ping_id_list = [int(id) for id in db_data[0].ping_id.split(",") if id != ""]
+
+        # awareなUTCのdatetimeに変換
+        created_at = db_data[0].created_at.replace(tzinfo=ZoneInfo("UTC"))
+        notified_at = None
+        if db_data[0].notified_at is not None:
+            notified_at = db_data[0].notified_at.replace(tzinfo=ZoneInfo("UTC"))
+
         db_data_raw = ReactionParameter(
             message_id=db_data[0].message_id,
             command_id=db_data[0].command_id,
@@ -84,17 +88,28 @@ class AggregationManager():
             sum=db_data[0].sum,
             matte=db_data[0].matte,
             author_id=db_data[0].author_id,
-            created_at=db_data[0].created_at,
-            notified_at=db_data[0].notified_at,
+            created_at=created_at,
+            notified_at=notified_at,
             remind=db_data[0].remind,
-            ping_id=ping_id_list)
+            ping_id=ping_id_list,
+        )
         return db_data_raw
 
     async def create_table(self):
         async with engine.begin() as conn:
             await conn.run_sync(ReactionAggregation.metadata.create_all)
 
-    async def register_aggregation(self, message_id: int, command_id: int, guild_id: int, channel_id: int, target_value: int, author_id: int, created_at: datetime, ping_id: str) -> None:
+    async def register_aggregation(
+        self,
+        message_id: int,
+        command_id: int,
+        guild_id: int,
+        channel_id: int,
+        target_value: int,
+        author_id: int,
+        created_at: datetime,
+        ping_id: str,
+    ) -> None:
         """リアクション集計のパラメータを登録する関数
 
         Args:
@@ -117,7 +132,8 @@ class AggregationManager():
                     target_value=target_value,
                     author_id=author_id,
                     created_at=created_at,
-                    ping_id=ping_id)
+                    ping_id=ping_id,
+                )
 
                 session.add(new_aggregation)
 
@@ -134,8 +150,7 @@ class AggregationManager():
 
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = select(ReactionAggregation).where(
-                    ReactionAggregation.guild_id == guild_id)
+                stmt = select(ReactionAggregation).where(ReactionAggregation.guild_id == guild_id)
                 result = await session.execute(stmt)
                 result = result.fetchall()
 
@@ -160,8 +175,7 @@ class AggregationManager():
         """
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = select(ReactionAggregation).where(
-                    ReactionAggregation.message_id == message_id)
+                stmt = select(ReactionAggregation).where(ReactionAggregation.message_id == message_id)
                 result = await session.execute(stmt)
                 result = result.fetchone()
                 if result is not None:
@@ -177,8 +191,7 @@ class AggregationManager():
         """
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = delete(ReactionAggregation).where(
-                    ReactionAggregation.message_id == message_id)
+                stmt = delete(ReactionAggregation).where(ReactionAggregation.message_id == message_id)
                 await session.execute(stmt)
 
     async def get_aggregation(self, message_id: int) -> Union[None, ReactionParameter]:
@@ -192,8 +205,7 @@ class AggregationManager():
         """
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = select(ReactionAggregation).where(
-                    ReactionAggregation.message_id == message_id)
+                stmt = select(ReactionAggregation).where(ReactionAggregation.message_id == message_id)
                 result = await session.execute(stmt)
                 result = result.fetchone()
                 if result is None:
@@ -210,9 +222,7 @@ class AggregationManager():
         """
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = update(ReactionAggregation).where(
-                    ReactionAggregation.message_id == message_id).values(
-                    sum=val)
+                stmt = update(ReactionAggregation).where(ReactionAggregation.message_id == message_id).values(sum=val)
                 await session.execute(stmt)
 
     async def set_value_to_matte(self, message_id: int, val: int) -> None:
@@ -224,9 +234,7 @@ class AggregationManager():
         """
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = update(ReactionAggregation).where(
-                    ReactionAggregation.message_id == message_id).values(
-                    matte=val)
+                stmt = update(ReactionAggregation).where(ReactionAggregation.message_id == message_id).values(matte=val)
                 await session.execute(stmt)
 
     async def set_value_to_notified(self, message_id: int, notified_time: datetime) -> None:
@@ -238,9 +246,11 @@ class AggregationManager():
         """
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = update(ReactionAggregation).where(
-                    ReactionAggregation.message_id == message_id).values(
-                    notified_at=notified_time)
+                stmt = (
+                    update(ReactionAggregation)
+                    .where(ReactionAggregation.message_id == message_id)
+                    .values(notified_at=notified_time)
+                )
                 await session.execute(stmt)
 
     async def unset_value_to_notified(self, message_id: int) -> None:
@@ -252,9 +262,11 @@ class AggregationManager():
         """
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = update(ReactionAggregation).where(
-                    ReactionAggregation.message_id == message_id).values(
-                    notified_at=None)
+                stmt = (
+                    update(ReactionAggregation)
+                    .where(ReactionAggregation.message_id == message_id)
+                    .values(notified_at=None)
+                )
                 await session.execute(stmt)
 
     async def set_value_to_remind(self, message_id: int, value: int) -> None:
@@ -266,9 +278,9 @@ class AggregationManager():
         """
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = update(ReactionAggregation).where(
-                    ReactionAggregation.message_id == message_id).values(
-                    remind=value)
+                stmt = (
+                    update(ReactionAggregation).where(ReactionAggregation.message_id == message_id).values(remind=value)
+                )
                 await session.execute(stmt)
 
     async def get_notified_aggregation(self) -> Union[None, List[ReactionParameter]]:
@@ -279,12 +291,10 @@ class AggregationManager():
         """
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = select(ReactionAggregation).where(
-                    ReactionAggregation.notified_at.isnot(None))
+                stmt = select(ReactionAggregation).where(ReactionAggregation.notified_at.isnot(None))
                 result = await session.execute(stmt)
                 result = result.fetchall()
-                result = [self.return_dataclass(reaction)
-                          for reaction in result]
+                result = [self.return_dataclass(reaction) for reaction in result]
 
         if len(result) == 0:
             return None
@@ -299,13 +309,14 @@ class AggregationManager():
         """
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = select(ReactionAggregation).where(
-                    ReactionAggregation.remind.is_(Null)).order_by(
-                    ReactionAggregation.guild_id)
+                stmt = (
+                    select(ReactionAggregation)
+                    .where(ReactionAggregation.remind.is_(Null))
+                    .order_by(ReactionAggregation.guild_id)
+                )
                 result = await session.execute(stmt)
                 result = result.fetchall()
-                result = [self.return_dataclass(reaction)
-                          for reaction in result]
+                result = [self.return_dataclass(reaction) for reaction in result]
 
         if len(result) == 0:
             return None
@@ -320,12 +331,10 @@ class AggregationManager():
         """
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = select(ReactionAggregation).order_by(
-                    ReactionAggregation.guild_id)
+                stmt = select(ReactionAggregation).order_by(ReactionAggregation.guild_id)
                 result = await session.execute(stmt)
                 result = result.fetchall()
-                result = [self.return_dataclass(reaction)
-                          for reaction in result]
+                result = [self.return_dataclass(reaction) for reaction in result]
 
         if len(result) == 0:
             return None

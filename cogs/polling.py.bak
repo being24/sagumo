@@ -1,6 +1,3 @@
-# !/usr/bin/env python3
-
-
 import logging
 import typing
 from datetime import datetime
@@ -116,7 +113,7 @@ class Polling(commands.Cog):
                 except discord.Forbidden:
                     await channel.send('リアクションの除去に失敗しました.')
                 notify_msg = await channel.send(f"{reaction.member.mention} 権限無しのリアクションは禁止です！")
-                # await self.autodel_msg(notify_msg)
+                # await self.delete_after(notify_msg)
                 return
 
             msg = await channel.fetch_message(reaction.message_id)
