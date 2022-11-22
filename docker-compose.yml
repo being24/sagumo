@@ -1,0 +1,11 @@
+version: "3.7"
+
+services:
+  sagumo:
+    image: "ghcr.io/being24/sagumo:latest"
+    volumes:
+      - ./sagumo-data:/opt/sagumo/data
+      - ./sagumo-log:/opt/sagumo/log
+    env_file:
+      - ./.env
+    restart: always

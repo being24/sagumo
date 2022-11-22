@@ -1,4 +1,3 @@
-docker stop sagumo
-docker rm sagumo
-docker pull ghcr.io/being24/sagumo:latest
-docker run -d -v sagumo-data:/opt/sagumo/data --env-file .env --restart=always --name=sagumo ghcr.io/being24/sagumo
+docker compose down
+docker compose pull
+docker compose up -d

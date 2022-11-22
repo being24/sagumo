@@ -1,5 +1,3 @@
-# !/usr/bin/env python3
-
 import asyncio
 from dataclasses import dataclass
 from typing import List, Optional, Union
