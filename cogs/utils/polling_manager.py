@@ -3,6 +3,7 @@ import dataclasses
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Union
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -15,6 +16,7 @@ try:
     from .db import engine
 except:
     import sys
+
     sys.path.append("../utils")
     from db import engine
 
@@ -27,23 +29,21 @@ class PollingParameter:
     message_id: int
     channel_id: int
     author_id: int
-    created_at: datetime = dataclasses.field(
-        default_factory=datetime.now, init=False)
+    created_at: datetime
     allow_list: list
 
 
 class PollingObj(Base):
-    __tablename__ = 'pollingaggregation'
+    __tablename__ = "pollingaggregation"
 
     message_id = Column(BigInteger, primary_key=True)  # メッセージID
     channel_id = Column(BigInteger, nullable=False)  # チャンネルID
     author_id = Column(BigInteger, nullable=False)  # 集めてる人のID
     created_at = Column(DATETIME, nullable=False)  # 集計開始時間
-    allow_list = Column(VARCHAR, default='')  # メンション先のID
+    allow_list = Column(VARCHAR, default="")  # メンション先のID
 
 
-class PollingManager():
-
+class PollingManager:
     @staticmethod
     def return_dataclass(db_data) -> PollingParameter:
         """DBからの情報をデータクラスに変換する関数、もうちょっとなんとかならんか？？？
@@ -55,21 +55,18 @@ class PollingManager():
             PollingParameter: データクラス
         """
 
-        '''
-        ping_id_list = []
-        guild_id_list_str = guild[0].ping_id.split(',')
-        for guild_id_str in guild_id_list_str:
-            if guild_id_str != '':
-                id = int(guild_id_str)
-                ping_id_list.append(id)
-        '''
-        allow_list = [
-            int(id) for id in db_data[0].allow_list.split(',') if id != '']
+        allow_list = [int(id) for id in db_data[0].allow_list.split(",") if id != ""]
+
+        # awareなUTCのdatetimeに変換
+        created_at = db_data[0].created_at.replace(tzinfo=ZoneInfo("UTC"))
+
         db_data_raw = PollingParameter(
             message_id=db_data[0].message_id,
             author_id=db_data[0].author_id,
             channel_id=db_data[0].channel_id,
-            allow_list=allow_list)
+            created_at=created_at,
+            allow_list=allow_list,
+        )
         return db_data_raw
 
     async def create_table(self):
@@ -90,7 +87,8 @@ class PollingManager():
                     author_id=data.author_id,
                     channel_id=data.channel_id,
                     created_at=data.created_at,
-                    allow_list=allow_list)
+                    allow_list=allow_list,
+                )
 
                 session.add(new_aggregation)
 
@@ -105,8 +103,7 @@ class PollingManager():
         """
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = select(PollingObj).where(
-                    PollingObj.message_id == message_id)
+                stmt = select(PollingObj).where(PollingObj.message_id == message_id)
                 result = await session.execute(stmt)
                 result = result.fetchone()
                 if result is None:
@@ -122,8 +119,7 @@ class PollingManager():
         """
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = delete(PollingObj).where(
-                    PollingObj.message_id == message_id)
+                stmt = delete(PollingObj).where(PollingObj.message_id == message_id)
                 await session.execute(stmt)
 
     async def get_all_aggregation(self) -> Union[None, List[PollingParameter]]:
@@ -137,8 +133,7 @@ class PollingManager():
                 stmt = select(PollingObj)
                 result = await session.execute(stmt)
                 result = result.fetchall()
-                result = [self.return_dataclass(poll)
-                          for poll in result]
+                result = [self.return_dataclass(poll) for poll in result]
 
         if len(result) == 0:
             return None
@@ -156,8 +151,7 @@ class PollingManager():
         """
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = select(PollingObj).where(
-                    PollingObj.message_id == message_id)
+                stmt = select(PollingObj).where(PollingObj.message_id == message_id)
                 result = await session.execute(stmt)
                 result = result.fetchone()
                 if result is not None:

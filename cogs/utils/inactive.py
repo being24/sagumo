@@ -45,7 +45,7 @@ class InactiveDetectorDB(Base):
 
 class InactiveManager:
     @staticmethod
-    def return_dataclass(db_data: InactiveDetectorDB) -> InactiveDetector:
+    def return_dataclass(db_data) -> InactiveDetector:
         """DBからのデータをdataclassに変換する関数
 
         Args:

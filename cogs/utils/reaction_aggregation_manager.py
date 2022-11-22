@@ -12,7 +12,13 @@ from sqlalchemy.sql.elements import Null
 from sqlalchemy.sql.sqltypes import BOOLEAN, DATETIME
 from sqlalchemy.types import VARCHAR, BigInteger, Integer
 
-from .db import engine
+try:
+    from .db import engine
+except BaseException:
+    import sys
+
+    sys.path.append("../utils")
+    from db import engine
 
 Base = declarative_base()
 

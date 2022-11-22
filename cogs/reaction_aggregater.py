@@ -353,7 +353,7 @@ class ReactionAggregator(commands.Cog):
         target_value_dict[view.children[0].custom_id] = target_value  # type: ignore
 
     @count.error
-    async def count_error(self, interaction: discord.Interaction, error):
+    async def count_error(self, interaction: discord.Interaction, error: Exception):
         if isinstance(error, commands.CheckFailure):
             await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
         if not isinstance(interaction.channel, discord.TextChannel):
@@ -394,7 +394,7 @@ class ReactionAggregator(commands.Cog):
         await self.start_paginating(ctx, reaction_list_of_guild)
 
     @list_reaction.error
-    async def list_reaction_error(self, interaction: discord.Interaction, error):
+    async def list_reaction_error(self, interaction: discord.Interaction, error: Exception):
         if isinstance(error, commands.CheckFailure):
             await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
         if not isinstance(interaction.channel, discord.TextChannel):
@@ -445,7 +445,7 @@ class ReactionAggregator(commands.Cog):
             await c.delete_after(notify_msg)
 
     @remove_reaction.error
-    async def remove_reaction_error(self, interaction: discord.Interaction, error):
+    async def remove_reaction_error(self, interaction: discord.Interaction, error: Exception):
         if isinstance(error, commands.CheckFailure):
             await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
         if not isinstance(interaction.channel, discord.TextChannel):
@@ -499,7 +499,7 @@ class ReactionAggregator(commands.Cog):
         await interaction.followup.send("付与が完了しました")
 
     @add_role.error
-    async def add_role_error(self, interaction: discord.Interaction, error):
+    async def add_role_error(self, interaction: discord.Interaction, error: Exception):
         if isinstance(error, commands.CheckFailure):
             await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
         if not isinstance(interaction.channel, discord.TextChannel):
@@ -542,7 +542,7 @@ class ReactionAggregator(commands.Cog):
             )
 
     @register_manage_role.error
-    async def register_manage_role_error(self, interaction: discord.Interaction, error):
+    async def register_manage_role_error(self, interaction: discord.Interaction, error: Exception):
         if isinstance(error, commands.CheckFailure):
             await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
         if not isinstance(interaction.channel, discord.TextChannel):
@@ -575,7 +575,7 @@ class ReactionAggregator(commands.Cog):
             await interaction.response.send_message(f"{interaction.guild}のbot管理者とbot操作者は登録されていません")
 
     @show_manage_role.error
-    async def show_manage_role_error(self, interaction: discord.Interaction, error):
+    async def show_manage_role_error(self, interaction: discord.Interaction, error: Exception):
         if isinstance(error, commands.CheckFailure):
             await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
         if not isinstance(interaction.channel, discord.TextChannel):
@@ -778,8 +778,8 @@ class ReactionAggregator(commands.Cog):
         await self.bot.wait_until_ready()
 
     @reaction_reminder.error
-    async def error(self, arg):
-        logger.warning(arg)
+    async def error(self, error) -> None:
+        logger.warning(error)
 
 
 async def setup(bot):
