@@ -35,7 +35,7 @@ class MyModal(commands.Cog, name="Modal管理用cog"):
             answer = TextInput(label="Input", style=discord.TextStyle.paragraph)
 
             async def on_submit(self, interaction: discord.Interaction):
-                if not isinstance(interaction.channel, discord.TextChannel):
+                if not isinstance(interaction.channel, discord.abc.Messageable):
                     await interaction.response.send_message("テキストチャンネル限定です", ephemeral=True)
                     return
                 await interaction.response.send_message("代理投稿を行いました", ephemeral=True)
@@ -63,7 +63,7 @@ class MyModal(commands.Cog, name="Modal管理用cog"):
             answer = TextInput(label="Input", style=discord.TextStyle.paragraph, default=message.content)
 
             async def on_submit(self, interaction: discord.Interaction):
-                if not isinstance(interaction.channel, discord.TextChannel):
+                if not isinstance(interaction.channel, discord.abc.Messageable):
                     await interaction.response.send_message("テキストチャンネル限定です", ephemeral=True)
                     return
                 await interaction.response.send_message("投稿の編集を行いました", ephemeral=True)
@@ -98,7 +98,7 @@ class MyModal(commands.Cog, name="Modal管理用cog"):
             deal = TextInput(label="対応", style=discord.TextStyle.paragraph)
 
             async def on_submit(self, interaction: discord.Interaction):
-                if not isinstance(interaction.channel, discord.TextChannel):
+                if not isinstance(interaction.channel, discord.abc.Messageable):
                     await interaction.response.send_message("テキストチャンネル限定です", ephemeral=True)
                     return
 
@@ -126,7 +126,7 @@ class MyModal(commands.Cog, name="Modal管理用cog"):
     async def disposition_record_error(self, interaction: discord.Interaction, error):
         if isinstance(error, commands.CheckFailure):
             await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
-        if not isinstance(interaction.channel, discord.TextChannel):
+        if not isinstance(interaction.channel, discord.abc.Messageable):
             return
         await interaction.response.send_message(f"エラーが発生しました。{error}")
 

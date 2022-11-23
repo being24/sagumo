@@ -190,7 +190,7 @@ class SelectView(discord.ui.View):
         if isinstance(error, NotSameUserError):
             await interaction.response.send_message("実行者と選択者が違います", ephemeral=True)
             return
-        if not isinstance(interaction.channel, discord.TextChannel):
+        if not isinstance(interaction.channel, discord.abc.Messageable):
             return
         await interaction.channel.send(f"エラーが発生しました。{error}")
 
@@ -254,7 +254,7 @@ class ReactionAggregator(commands.Cog):
         if isinstance(channel, discord.Thread):
             if channel.archived:
                 return
-        if not isinstance(channel, discord.TextChannel):
+        if not isinstance(channel, discord.abc.Messageable):
             return
         try:
             msg = await channel.fetch_message(message_id)
@@ -293,7 +293,7 @@ class ReactionAggregator(commands.Cog):
                 )
                 return
 
-            if not isinstance(channel, discord.TextChannel):
+            if not isinstance(channel, discord.abc.Messageable):
                 return
 
             command_msg = await channel.fetch_message(reaction_data.command_id)
@@ -330,7 +330,7 @@ class ReactionAggregator(commands.Cog):
         elif reaction_data.notified_at is not Null and reaction_data.target_value > reaction_data.sum:
             channel = self.bot.get_channel(reaction_data.channel_id)
 
-            if not isinstance(channel, discord.TextChannel):
+            if not isinstance(channel, discord.abc.Messageable):
                 return
 
             msg = await channel.fetch_message(reaction_data.message_id)
@@ -359,7 +359,7 @@ class ReactionAggregator(commands.Cog):
     async def count_error(self, interaction: discord.Interaction, error: Exception):
         if isinstance(error, commands.CheckFailure):
             await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
-        if not isinstance(interaction.channel, discord.TextChannel):
+        if not isinstance(interaction.channel, discord.abc.Messageable):
             return
         await interaction.channel.send(f"エラーが発生しました。{error}")
 
@@ -400,7 +400,7 @@ class ReactionAggregator(commands.Cog):
     async def list_reaction_error(self, interaction: discord.Interaction, error: Exception):
         if isinstance(error, commands.CheckFailure):
             await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
-        if not isinstance(interaction.channel, discord.TextChannel):
+        if not isinstance(interaction.channel, discord.abc.Messageable):
             return
         await interaction.channel.send(f"エラーが発生しました。{error}")
 
@@ -451,7 +451,7 @@ class ReactionAggregator(commands.Cog):
     async def remove_reaction_error(self, interaction: discord.Interaction, error: Exception):
         if isinstance(error, commands.CheckFailure):
             await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
-        if not isinstance(interaction.channel, discord.TextChannel):
+        if not isinstance(interaction.channel, discord.abc.Messageable):
             return
         await interaction.channel.send(f"エラーが発生しました。{error}")
 
@@ -505,7 +505,7 @@ class ReactionAggregator(commands.Cog):
     async def add_role_error(self, interaction: discord.Interaction, error: Exception):
         if isinstance(error, commands.CheckFailure):
             await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
-        if not isinstance(interaction.channel, discord.TextChannel):
+        if not isinstance(interaction.channel, discord.abc.Messageable):
             return
         await interaction.channel.send(f"エラーが発生しました。{error}")
 
@@ -548,7 +548,7 @@ class ReactionAggregator(commands.Cog):
     async def register_manage_role_error(self, interaction: discord.Interaction, error: Exception):
         if isinstance(error, commands.CheckFailure):
             await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
-        if not isinstance(interaction.channel, discord.TextChannel):
+        if not isinstance(interaction.channel, discord.abc.Messageable):
             return
         await interaction.channel.send(f"エラーが発生しました。{error}")
 
@@ -581,7 +581,7 @@ class ReactionAggregator(commands.Cog):
     async def show_manage_role_error(self, interaction: discord.Interaction, error: Exception):
         if isinstance(error, commands.CheckFailure):
             await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
-        if not isinstance(interaction.channel, discord.TextChannel):
+        if not isinstance(interaction.channel, discord.abc.Messageable):
             return
         await interaction.channel.send(f"エラーが発生しました。{error}")
 
@@ -601,7 +601,7 @@ class ReactionAggregator(commands.Cog):
             member_role_ids.append(reaction.user_id)
             channel = self.bot.get_channel(reaction.channel_id)
 
-            if not isinstance(channel, discord.TextChannel):
+            if not isinstance(channel, discord.abc.Messageable):
                 return
 
             if len(reaction_data.ping_id) == 0:
@@ -648,7 +648,7 @@ class ReactionAggregator(commands.Cog):
                 return
 
             channel = self.bot.get_channel(reaction.channel_id)
-            if not isinstance(channel, discord.TextChannel):
+            if not isinstance(channel, discord.abc.Messageable):
                 logger.warn("channel is not TextChannel @on_raw_reaction_remove")
                 return
 
@@ -718,7 +718,7 @@ class ReactionAggregator(commands.Cog):
             reaction (ReactionParameter): リアクション集計
         """
         channel = self.bot.get_channel(reaction.channel_id)
-        if not isinstance(channel, discord.TextChannel):
+        if not isinstance(channel, discord.abc.Messageable):
             logger.warn("channel is not TextChannel @send_remind")
             return
         url = c.get_msg_url_from_reaction(reaction)
