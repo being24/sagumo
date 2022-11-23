@@ -1,5 +1,3 @@
-# !/usr/bin/env python3
-
 import asyncio
 import dataclasses
 from dataclasses import dataclass
@@ -18,6 +16,7 @@ try:
     from .db import engine
 except BaseException:
     import sys
+
     sys.path.append("../utils")
     from db import engine
 
@@ -35,7 +34,7 @@ class InactiveDetector:
 
 
 class InactiveDetectorDB(Base):
-    __tablename__ = 'inactive'
+    __tablename__ = "inactive"
 
     user_id = Column(BigInteger, primary_key=True)  # ユーザーID
     last_posted = Column(DATETIME, nullable=False)  # 最終ポスト
@@ -44,9 +43,9 @@ class InactiveDetectorDB(Base):
     notified = Column(BOOLEAN, default=False)  # 通知済みか
 
 
-class InactiveManager():
+class InactiveManager:
     @staticmethod
-    def return_dataclass(db_data: InactiveDetectorDB) -> InactiveDetector:
+    def return_dataclass(db_data) -> InactiveDetector:
         """DBからのデータをdataclassに変換する関数
 
         Args:
@@ -61,7 +60,8 @@ class InactiveManager():
             last_posted=db_data.last_posted,
             last_react=db_data.last_react,
             active=db_data.active,
-            notified=db_data.notified)
+            notified=db_data.notified,
+        )
         return db_data_raw
 
     @staticmethod
@@ -80,7 +80,8 @@ class InactiveManager():
             last_posted=db_data.last_posted,
             last_react=db_data.last_react,
             active=db_data.active,
-            notified=db_data.notified)
+            notified=db_data.notified,
+        )
 
         return processed_data
 
@@ -105,8 +106,7 @@ class InactiveManager():
                 last_posted=now,
                 last_react=now,
             )
-            do_nothing_stmt = stmt.on_conflict_do_nothing(
-                index_elements=['user_id'])
+            do_nothing_stmt = stmt.on_conflict_do_nothing(index_elements=["user_id"])
 
             async with AsyncSession(engine) as session:
                 async with session.begin():
@@ -118,8 +118,7 @@ class InactiveManager():
         Returns:
             Optional[List[int]]: 有効なメンバーID
         """
-        stmt = select([InactiveDetectorDB.user_id]).where(
-            InactiveDetectorDB.active)
+        stmt = select([InactiveDetectorDB.user_id]).where(InactiveDetectorDB.active)
         async with AsyncSession(engine) as session:
             async with session.begin():
                 result = await session.execute(stmt)
@@ -137,8 +136,7 @@ class InactiveManager():
         Returns:
             Optional[List[int]]: 非アクティブなメンバーID
         """
-        stmt = select([InactiveDetectorDB.user_id]).where(
-            InactiveDetectorDB.active == False)
+        stmt = select([InactiveDetectorDB.user_id]).where(InactiveDetectorDB.active == False)
 
         async with AsyncSession(engine) as session:
             async with session.begin():
@@ -178,9 +176,8 @@ class InactiveManager():
 
         Returns:
             bool: 対象であればTrue
-        """        
-        stmt = select([InactiveDetectorDB.user_id]).where(
-            InactiveDetectorDB.user_id == member_id)
+        """
+        stmt = select([InactiveDetectorDB.user_id]).where(InactiveDetectorDB.user_id == member_id)
         async with AsyncSession(engine) as session:
             async with session.begin():
                 result = await session.execute(stmt)
@@ -198,8 +195,7 @@ class InactiveManager():
             member_id (int): メンバーID
         """
 
-        stmt = delete(InactiveDetectorDB).where(
-            InactiveDetectorDB.user_id == member_id)
+        stmt = delete(InactiveDetectorDB).where(InactiveDetectorDB.user_id == member_id)
         async with AsyncSession(engine) as session:
             async with session.begin():
                 await session.execute(stmt)
@@ -210,9 +206,11 @@ class InactiveManager():
         Args:
             member_id (int): メンバーID
         """
-        stmt = update(InactiveDetectorDB).where(
-            InactiveDetectorDB.user_id == member_id).values(
-                last_posted=datetime.utcnow())
+        stmt = (
+            update(InactiveDetectorDB)
+            .where(InactiveDetectorDB.user_id == member_id)
+            .values(last_posted=datetime.utcnow())
+        )
 
         async with AsyncSession(engine) as session:
             async with session.begin():
@@ -224,9 +222,11 @@ class InactiveManager():
         Args:
             member_id (int): メンバーID
         """
-        stmt = update(InactiveDetectorDB).where(
-            InactiveDetectorDB.user_id == member_id).values(
-            last_react=datetime.utcnow())
+        stmt = (
+            update(InactiveDetectorDB)
+            .where(InactiveDetectorDB.user_id == member_id)
+            .values(last_react=datetime.utcnow())
+        )
 
         async with AsyncSession(engine) as session:
             async with session.begin():
@@ -243,8 +243,11 @@ class InactiveManager():
         """
         now = datetime.utcnow()
         month_ago = now - relativedelta(months=month)
-        stmt = select([InactiveDetectorDB.user_id]).where(InactiveDetectorDB.notified == False).filter(
-            or_(InactiveDetectorDB.last_posted < month_ago, InactiveDetectorDB.last_react < month_ago))
+        stmt = (
+            select([InactiveDetectorDB.user_id])
+            .where(InactiveDetectorDB.notified == False)
+            .filter(or_(InactiveDetectorDB.last_posted < month_ago, InactiveDetectorDB.last_react < month_ago))
+        )
         async with AsyncSession(engine) as session:
             async with session.begin():
                 result = await session.execute(stmt)
@@ -263,9 +266,11 @@ class InactiveManager():
             member_list (List[int]): 一定期間連続で投稿しなかったメンバーIDのリスト
         """
         for member in member_list:
-            stmt = update(InactiveDetectorDB).where(
-                InactiveDetectorDB.user_id == member).values(
-                active=False, notified=True)
+            stmt = (
+                update(InactiveDetectorDB)
+                .where(InactiveDetectorDB.user_id == member)
+                .values(active=False, notified=True)
+            )
             async with AsyncSession(engine) as session:
                 async with session.begin():
                     await session.execute(stmt)
@@ -277,9 +282,11 @@ class InactiveManager():
             member_id (int): アクティブにするメンバーID
         """
         now = datetime.utcnow()
-        stmt = update(InactiveDetectorDB).where(
-            InactiveDetectorDB.user_id == member_id).values(
-            last_posted=now, last_react=now, active=True, notified=False)
+        stmt = (
+            update(InactiveDetectorDB)
+            .where(InactiveDetectorDB.user_id == member_id)
+            .values(last_posted=now, last_react=now, active=True, notified=False)
+        )
         async with AsyncSession(engine) as session:
             async with session.begin():
                 await session.execute(stmt)
@@ -290,9 +297,11 @@ class InactiveManager():
         Args:
             member_id (int): 非アクティブにするメンバーID
         """
-        stmt = update(InactiveDetectorDB).where(
-            InactiveDetectorDB.user_id == member_id).values(
-            active=False, notified=True)
+        stmt = (
+            update(InactiveDetectorDB)
+            .where(InactiveDetectorDB.user_id == member_id)
+            .values(active=False, notified=True)
+        )
         async with AsyncSession(engine) as session:
             async with session.begin():
                 await session.execute(stmt)
