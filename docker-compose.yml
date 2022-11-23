@@ -2,7 +2,7 @@ version: "3.7"
 
 services:
   sagumo:
-    image: "test"
+    image: "ghcr.io/being24/sagumo:latest"
     volumes:
       - ./data:/opt/sagumo/data
       - ./log:/opt/sagumo/log
