@@ -130,7 +130,10 @@ class Select(discord.ui.MentionableSelect):
 
         last_msg = "本メッセージにリアクションをつけてください"
 
-        await interaction.response.send_message(f"{first_msg}\n{mid_msg}{last_msg}")
+        await interaction.response.send_message(
+            f"{first_msg}\n{mid_msg}{last_msg}",
+            allowed_mentions=discord.AllowedMentions(everyone=False, roles=True, users=True),
+        )
         msg = await interaction.original_response()
 
         now = discord.utils.utcnow()
