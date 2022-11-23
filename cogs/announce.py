@@ -1,62 +1,135 @@
-# !/usr/bin/env python3
+import logging
 
 import discord
+from discord import app_commands
 from discord.ext import commands
+from discord.ui import Modal, TextInput
 
-from cogs.utils.common import CommonUtil
-
-from .utils.confirm import Confirm
+from .utils.common import CommonUtil
 
 
-class AnnounceManager(commands.Cog):
+class MyModal(commands.Cog, name="Modal管理用cog"):
     """
-    アナウンス用のcog
+    Modal管理
     """
 
     def __init__(self, bot):
-        self.bot = bot
+        self.bot: commands.Bot = bot
         self.c = CommonUtil()
 
-    @commands.group(name='announce', description='アナウンスを行います',
-                    invoke_without_command=True, hidden=True)
-    @commands.has_permissions(ban_members=True)
-    async def announce(self, ctx: commands.Context, message: str):
-        """アナウンスを行うコマンド"""
-        if ctx.invoked_subcommand is None:
-            await ctx.send(message)
-            notify_msg = await ctx.reply('送信しました')
-            await self.c.autodel_msg(notify_msg)
-            await self.c.autodel_msg(ctx.message)
+        self.logger = logging.getLogger("discord")
 
-    @announce.command(name='edit', description='アナウンスを編集します')
-    async def announce_edit(self, ctx: commands.Context, target_id: int):
-        """アナウンスを編集するコマンド"""
+        self.ctx_menu = app_commands.ContextMenu(
+            name="edit message",
+            callback=self.edit_message,
+        )
+        self.bot.tree.add_command(self.ctx_menu)
 
-        # process_commandで分割しちゃってるので再取得
-        raw_msg = await ctx.channel.fetch_message(ctx.message.id)
-        # 内容だけ取り出す
-        content = raw_msg.content[raw_msg.content.find(f'{target_id}') + len(f'{target_id}') + 1:]
+    @app_commands.command(name="proxy_transmission", description="代理投稿を行うコマンド")
+    @app_commands.default_permissions(manage_guild=True)
+    @app_commands.guild_only()
+    async def proxy_transmission(self, interaction: discord.Interaction):
+        """代理投稿を行うコマンド"""
 
-        # 対象を取得
-        msg = await ctx.fetch_message(target_id)
+        class ProxyModal(Modal, title="代理投稿を行います"):
+            answer = TextInput(label="Input", style=discord.TextStyle.paragraph)
 
-        # BOTのメッセージじゃなければ弾く
-        if msg.author.id != self.bot.application_id:
-            notify_msg = await ctx.reply('このメッセージは編集できません')
-            await self.c.autodel_msg(notify_msg)
+            async def on_submit(self, interaction: discord.Interaction):
+                if not isinstance(interaction.channel, discord.TextChannel):
+                    await interaction.response.send_message("テキストチャンネル限定です", ephemeral=True)
+                    return
+                await interaction.response.send_message("代理投稿を行いました", ephemeral=True)
+                try:
+                    await interaction.channel.send(self.answer.value)
+                except discord.Forbidden:
+                    await interaction.response.send_message("メッセージの送信に失敗しました。Forbidden", ephemeral=True)
+                except discord.HTTPException:
+                    await interaction.response.send_message("メッセージの送信に失敗しました。HTTPException", ephemeral=True)
+
+        await interaction.response.send_modal(ProxyModal())
+
+    @app_commands.default_permissions(manage_guild=True)
+    @app_commands.guild_only()
+    async def edit_message(self, interaction: discord.Interaction, message: discord.Message):
+        if self.bot.user is None:
+            self.logger.info("bot.userがNoneです")
             return
 
-        # 編集
-        confirm = await Confirm(f'ID : {target_id}を編集しましか？').prompt(ctx)
-        if confirm:
-            await msg.edit(content=content)
-            notify_msg = await ctx.reply(f"ID : {target_id}は{ctx.author}により編集されました")
-        else:
-            notify_msg = await ctx.send(f"ID : {target_id}の編集を中止しました")
+        if self.bot.user.id != message.author.id:
+            await interaction.response.send_message("自分のメッセージのみ編集できます", ephemeral=True)
+            return
 
-        await self.c.autodel_msg(notify_msg)
-        await self.c.autodel_msg(ctx.message)
+        class EditModal(Modal, title="編集を行います"):
+            answer = TextInput(label="Input", style=discord.TextStyle.paragraph, default=message.content)
+
+            async def on_submit(self, interaction: discord.Interaction):
+                if not isinstance(interaction.channel, discord.TextChannel):
+                    await interaction.response.send_message("テキストチャンネル限定です", ephemeral=True)
+                    return
+                await interaction.response.send_message("投稿の編集を行いました", ephemeral=True)
+                # await interaction.channel.send(self.answer.value)
+                await message.edit(content=self.answer.value)
+
+        await interaction.response.send_modal(EditModal())
+
+    @app_commands.command(name="disposition_record")
+    @app_commands.default_permissions(manage_guild=True)
+    @app_commands.guild_only()
+    async def disposition_record(self, interaction: discord.Interaction, user: discord.User):
+        """処分記録を行うコマンド
+
+        Args:
+            interaction (discord.Interaction): interaction
+            user_id (int): 処分対象のユーザーID
+        """
+        # try:
+        #     user = await self.bot.fetch_user(user_id)
+        # except discord.NotFound:
+        #     await interaction.response.send_message("ユーザーが見つかりませんでした", ephemeral=True)
+        #     return
+        if user is None:
+            await interaction.response.send_message("ユーザーが見つかりませんでした", ephemeral=True)
+            return
+
+        class ProxyModal(Modal, title="処分記録を投稿します"):
+            desc = TextInput(label="概要", style=discord.TextStyle.paragraph)
+            corresponding_part = TextInput(label="該当箇所", style=discord.TextStyle.paragraph)
+            discussion_part = TextInput(label="議論箇所", style=discord.TextStyle.paragraph)
+            deal = TextInput(label="対応", style=discord.TextStyle.paragraph)
+
+            async def on_submit(self, interaction: discord.Interaction):
+                if not isinstance(interaction.channel, discord.TextChannel):
+                    await interaction.response.send_message("テキストチャンネル限定です", ephemeral=True)
+                    return
+
+                today = discord.utils.utcnow().strftime("%Y/%m/%d")
+                embed = discord.Embed(
+                    title=f"{today}", description=f"desc : {self.desc.value}", color=discord.Color.red()
+                )
+                embed.add_field(name="・該当箇所", value=self.corresponding_part.value, inline=False)
+                embed.add_field(name="・議論箇所", value=self.discussion_part.value, inline=False)
+                embed.add_field(name="・対応", value=self.deal.value, inline=False)
+                embed.set_author(name=f"{user.name} ID:{user.id}", icon_url=user.display_avatar)
+
+                try:
+                    await interaction.channel.send(embed=embed)
+                except discord.Forbidden:
+                    await interaction.response.send_message("メッセージの送信に失敗しました。Forbidden", ephemeral=True)
+                except discord.HTTPException:
+                    await interaction.response.send_message("メッセージの送信に失敗しました。HTTPException", ephemeral=True)
+
+                await interaction.response.send_message("処分記録を行いました", ephemeral=True)
+
+        await interaction.response.send_modal(ProxyModal())
+
+    @disposition_record.error
+    async def disposition_record_error(self, interaction: discord.Interaction, error):
+        if isinstance(error, commands.CheckFailure):
+            await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
+        if not isinstance(interaction.channel, discord.TextChannel):
+            return
+        await interaction.response.send_message(f"エラーが発生しました。{error}")
 
 
-def setup(bot):
-    bot.add_cog(AnnounceManager(bot))
+async def setup(bot):
+    await bot.add_cog(MyModal(bot))
