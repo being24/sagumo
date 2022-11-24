@@ -176,7 +176,10 @@ class SelectView(discord.ui.View):
         # タイムアウトしたら消す
         for item in self.children:
             item.disabled = True  # type: ignore
-        await self.message.edit(view=self)  # type: ignore
+        try:
+            await self.message.edit(view=self)  # type: ignore
+        except discord.NotFound:
+            pass
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         # 実行者と選択者が違ったらFalseを返す
@@ -301,7 +304,7 @@ class ReactionAggregator(commands.Cog):
             if not isinstance(channel, discord.abc.Messageable):
                 return
 
-            command_msg = await channel.fetch_message(reaction_data.message_id)
+            # command_msg = await channel.fetch_message(reaction_data.message_id)
 
             url = c.get_msg_url_from_reaction(reaction_data)
 
@@ -327,7 +330,7 @@ class ReactionAggregator(commands.Cog):
             else:
                 author_mention = author.mention
 
-            await command_msg.reply(f"{author_mention}", embed=embed)
+            await channel.send(f"{author_mention}", embed=embed)
 
             msg = await channel.fetch_message(reaction_data.message_id)
             await msg.edit(content=msg.content + "\n\t終了しました")
