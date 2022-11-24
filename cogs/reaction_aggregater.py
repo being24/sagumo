@@ -100,10 +100,15 @@ class Select(discord.ui.MentionableSelect):
         self.aggregation_mng = AggregationManager()
 
     async def callback(self, interaction: discord.Interaction):
+        if self.view is None:
+            return
         # select menuを無効にする
         for item in self.view.children:
             item.disabled = True
         await self.view.message.edit(view=self.view)
+
+        if isinstance(interaction.message, discord.Message):
+            await c.delete_after(interaction.message)
 
         target_value = target_value_dict.pop(self.custom_id)
         if target_value is None:
@@ -296,7 +301,7 @@ class ReactionAggregator(commands.Cog):
             if not isinstance(channel, discord.abc.Messageable):
                 return
 
-            command_msg = await channel.fetch_message(reaction_data.command_id)
+            command_msg = await channel.fetch_message(reaction_data.message_id)
 
             url = c.get_msg_url_from_reaction(reaction_data)
 
