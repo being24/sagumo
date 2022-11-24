@@ -301,7 +301,7 @@ class ReactionAggregator(commands.Cog):
             if not isinstance(channel, discord.abc.Messageable):
                 return
 
-            command_msg = await channel.fetch_message(reaction_data.message_id)
+            # command_msg = await channel.fetch_message(reaction_data.message_id)
 
             url = c.get_msg_url_from_reaction(reaction_data)
 
@@ -327,7 +327,7 @@ class ReactionAggregator(commands.Cog):
             else:
                 author_mention = author.mention
 
-            await command_msg.reply(f"{author_mention}", embed=embed)
+            await channel.send(f"{author_mention}", embed=embed)
 
             msg = await channel.fetch_message(reaction_data.message_id)
             await msg.edit(content=msg.content + "\n\t終了しました")
