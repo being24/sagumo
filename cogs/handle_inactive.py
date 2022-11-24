@@ -134,7 +134,7 @@ class InactiveDetector(commands.Cog):
             return
 
         if not isinstance(message.author, discord.Member):
-            logger.warn("author is not member")
+            logger.debug("author is not member")
             return
 
         # メッセージの送り主がサイトスタッフの役職を持たない場合は無視する
@@ -152,7 +152,7 @@ class InactiveDetector(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, reaction: discord.RawReactionActionEvent):
         if not isinstance(reaction.member, discord.Member):
-            logger.warn("author is not member")
+            logger.debug("author is not member")
             return
 
         # メッセージの送り主がサイトスタッフの役職を持たない場合は無視する
