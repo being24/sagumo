@@ -176,7 +176,10 @@ class SelectView(discord.ui.View):
         # タイムアウトしたら消す
         for item in self.children:
             item.disabled = True  # type: ignore
-        await self.message.edit(view=self)  # type: ignore
+        try:
+            await self.message.edit(view=self)  # type: ignore
+        except discord.NotFound:
+            pass
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         # 実行者と選択者が違ったらFalseを返す
