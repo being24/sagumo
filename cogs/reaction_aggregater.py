@@ -345,7 +345,7 @@ class ReactionAggregator(commands.Cog):
             await msg.edit(content=msg.content.replace("\n\t終了しました", ""))
 
     @app_commands.command(name="count")
-    @app_commands.check(app_has_bot_manager)
+    @app_commands.check(app_has_bot_user)
     @app_commands.guild_only()
     async def count(self, interaction: discord.Interaction, target_value: int):
         """リアクション集計を開始するコマンド
