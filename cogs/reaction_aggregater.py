@@ -330,7 +330,11 @@ class ReactionAggregator(commands.Cog):
             else:
                 author_mention = author.mention
 
-            await channel.send(f"{author_mention}", embed=embed)
+            try:
+                await channel.send(f"{author_mention}", embed=embed)
+            except discord.Forbidden:
+                logger.warn(f"send message is forbidden. channel_id: {channel}, guild_id: {guild}")
+                return
 
             msg = await channel.fetch_message(reaction_data.message_id)
             await msg.edit(content=msg.content + "\n\t終了しました")
@@ -410,7 +414,10 @@ class ReactionAggregator(commands.Cog):
             await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
         if not isinstance(interaction.channel, discord.abc.Messageable):
             return
-        await interaction.channel.send(f"エラーが発生しました。{error}")
+        try:
+            await interaction.channel.send(f"エラーが発生しました。{error}")
+        except discord.Forbidden:
+            logger.warn(f"send message is forbidden. channel_id: {interaction.channel}, guild_id: {interaction.guild}")
 
     @app_commands.command(name="remove_reaction")
     @app_commands.check(app_has_bot_manager)
