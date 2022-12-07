@@ -766,7 +766,13 @@ class ReactionAggregator(commands.Cog):
         embed.set_footer(text=f"対象 : {roles_name} 経過時間 : {days} days, {hours} hours {minutes} minutes")
         if roles_mention != "None":
             await channel.send(f"{roles_mention}")
-        await channel.send(embed=embed)
+        try:
+            await channel.send(embed=embed)
+        except discord.Forbidden:
+            logger.warn(
+                f"Forbidden @send_remind guild_id : {reaction.guild_id} channel_id : {reaction.channel_id} message_id : {reaction.message_id}"
+            )
+            return
         await self.aggregation_mng.set_value_to_remind(reaction.message_id, val)
         await asyncio.sleep(0.3)
 
