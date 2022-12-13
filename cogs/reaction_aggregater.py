@@ -734,7 +734,7 @@ class ReactionAggregator(commands.Cog):
         """
         channel = self.bot.get_channel(reaction.channel_id)
         if not isinstance(channel, discord.abc.Messageable):
-            logger.warn("channel is not TextChannel @send_remind")
+            logger.warn(f"channel is not TextChannel @send_remind guild_id={reaction.guild_id} channel_id={reaction.channel_id} message_id={reaction.message_id}")
             return
         url = c.get_msg_url_from_reaction(reaction)
         guild = self.bot.get_guild(reaction.guild_id)
