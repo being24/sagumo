@@ -10,7 +10,6 @@ from discord.ext.menus import ListPageSource, MenuPages
 from sqlalchemy.sql.elements import Null
 
 from .utils.common import CommonUtil
-
 from .utils.reaction_aggregation_manager import AggregationManager, ReactionParameter
 from .utils.setting_manager import SettingManager
 
@@ -47,12 +46,13 @@ class ReactionList(ListPageSource):
         offset = (menu.current_page * self.per_page) + 1
         len_data = len(self.entries)
 
-        embed = discord.Embed(title="集計中のリアクションは以下の通りです", description=f"本サーバーでは{len_data}件集計中", color=0x0088FF)
+        embed = discord.Embed(title="集計中のリアクションは以下の通りです", description=f"本サーバーでは{len_data}件集計中",
+                              color=0x0088FF)
         if self.ctx.guild is None or self.ctx.guild.me.avatar is None:
             return
         embed.set_thumbnail(url=self.ctx.guild.me.avatar.replace(format="png").url)
 
-        embed.set_footer(text=f"{offset:,} - {min(len_data, offset+self.per_page-1):,} of {len_data:,} records.")
+        embed.set_footer(text=f"{offset:,} - {min(len_data, offset + self.per_page - 1):,} of {len_data:,} records.")
 
         for num, reaction in enumerate(fields):
             # USTのreaction.created_atをJSTに変換
@@ -80,7 +80,7 @@ class ReactionList(ListPageSource):
             else:
                 val = f"**ID** : {reaction.message_id} by : {author_mention} progress : {reaction.sum}/{reaction.target_value}{matte}\ntarget: {target} time : {time} [link.]({url})"
 
-            embed.add_field(name=f"{num+offset}番目", value=f"{val}", inline=False)
+            embed.add_field(name=f"{num + offset}番目", value=f"{val}", inline=False)
 
         return embed
 
@@ -528,7 +528,7 @@ class ReactionAggregator(commands.Cog):
     @app_commands.default_permissions(manage_guild=True)
     @app_commands.guild_only()
     async def register_manage_role(
-        self, interaction: discord.Interaction, bot_manager: discord.Role, bot_user: discord.Role
+            self, interaction: discord.Interaction, bot_manager: discord.Role, bot_user: discord.Role
     ):
         """bot管理者とbot使用者を登録するコマンド、順番注意
 
@@ -622,14 +622,19 @@ class ReactionAggregator(commands.Cog):
             if len(reaction_data.ping_id) == 0:
                 pass
             elif len(set(reaction_data.ping_id) & set(member_role_ids)) == 0:
-                msg = await channel.fetch_message(reaction.message_id)
-                try:
-                    await msg.remove_reaction(str(reaction.emoji), reaction.member)
-                except discord.Forbidden:
-                    await channel.send("リアクションの除去に失敗しました.")
-                notify_msg = await channel.send(f"{reaction.member.mention} 権限無しのリアクションは禁止です！")
-                # await self.delete_after(notify_msg)
-                return
+                # bot使用者からのmatteなら拒否しない
+                if "matte" in reaction.emoji.name and c.has_bot_user(
+                        self.bot.get_guild(reaction.guild_id), reaction.member):
+                    pass
+                else:
+                    msg = await channel.fetch_message(reaction.message_id)
+                    try:
+                        await msg.remove_reaction(str(reaction.emoji), reaction.member)
+                    except discord.Forbidden:
+                        await channel.send("リアクションの除去に失敗しました.")
+                    notify_msg = await channel.send(f"{reaction.member.mention} 権限無しのリアクションは禁止です！")
+                    # await self.delete_after(notify_msg)
+                    return
 
             if "matte" in reaction.emoji.name:
                 await self.aggregation_mng.set_value_to_matte(message_id=message_id, val=reaction_data.matte + 1)
@@ -673,7 +678,9 @@ class ReactionAggregator(commands.Cog):
             if len(reaction_data.ping_id) == 0:
                 pass
             elif len(set(reaction_data.ping_id) & set(member_role_ids)) == 0:
-                return
+                # bot使用者からのmatteならreturnしない
+                if "matte" in reaction.emoji.name and c.has_bot_user(self.bot.get_guild(reaction.guild_id), remove_usr):
+                    return
 
             if "matte" in reaction.emoji.name:
                 await self.aggregation_mng.set_value_to_matte(message_id=message_id, val=reaction_data.matte - 1)
@@ -734,7 +741,8 @@ class ReactionAggregator(commands.Cog):
         """
         channel = self.bot.get_channel(reaction.channel_id)
         if not isinstance(channel, discord.abc.Messageable):
-            logger.warn(f"channel is not TextChannel @send_remind guild_id={reaction.guild_id} channel_id={reaction.channel_id} message_id={reaction.message_id}")
+            logger.warn(
+                f"channel is not TextChannel @send_remind guild_id={reaction.guild_id} channel_id={reaction.channel_id} message_id={reaction.message_id}")
             return
         url = c.get_msg_url_from_reaction(reaction)
         guild = self.bot.get_guild(reaction.guild_id)
