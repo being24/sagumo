@@ -33,7 +33,7 @@ class Admin(commands.Cog, name="管理用コマンド群"):
     async def on_guild_join(self, guild):
         """on_guild_join時に発火する関数"""
         embed = discord.Embed(
-            title="サーバーに参加しました", description=f"スレッド保守bot {self.bot.user.display_name}", color=0x2FE48D
+            title="サーバーに参加しました", description=f"リアクション集計bot {self.bot.user.display_name}", color=0x2FE48D
         )
         embed.set_author(name=f"{self.bot.user.name}", icon_url=f"{self.bot.user.avatar.replace(format='png').url}")
         try:

@@ -14,7 +14,7 @@ from sqlalchemy.types import VARCHAR, BigInteger
 
 try:
     from .db import engine
-except:
+except ImportError:
     import sys
 
     sys.path.append("../utils")
@@ -46,7 +46,7 @@ class PollingObj(Base):
 class PollingManager:
     @staticmethod
     def return_dataclass(db_data) -> PollingParameter:
-        """DBからの情報をデータクラスに変換する関数、もうちょっとなんとかならんか？？？
+        """DBからの情報をデータクラスに変換する関数
 
         Args:
             db_data (sqlalchemyの): DBから取り出したデータ
