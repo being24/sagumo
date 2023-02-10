@@ -68,7 +68,6 @@ if __name__ == "__main__":
     )
     dt_fmt = "%Y-%m-%d %H:%M:%S"
     formatter = logging.Formatter("[{asctime}] [{levelname:<8}] {name}: {message}", dt_fmt, style="{")
-    handler.setFormatter(formatter)
     logger.addHandler(handler)
 
     current_path = pathlib.Path(__file__).parents[0]
@@ -89,4 +88,4 @@ if __name__ == "__main__":
 
         use_sentry(bot, dsn=dsn, integrations=[AioHttpIntegration(), sentry_logging])
 
-    bot.run(token, log_handler=handler)
+    bot.run(token, log_handler=handler, log_formatter=formatter)
