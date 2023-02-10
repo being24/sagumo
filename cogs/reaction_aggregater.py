@@ -46,8 +46,7 @@ class ReactionList(ListPageSource):
         offset = (menu.current_page * self.per_page) + 1
         len_data = len(self.entries)
 
-        embed = discord.Embed(title="集計中のリアクションは以下の通りです", description=f"本サーバーでは{len_data}件集計中",
-                              color=0x0088FF)
+        embed = discord.Embed(title="集計中のリアクションは以下の通りです", description=f"本サーバーでは{len_data}件集計中", color=0x0088FF)
         if self.ctx.guild is None or self.ctx.guild.me.avatar is None:
             return
         embed.set_thumbnail(url=self.ctx.guild.me.avatar.replace(format="png").url)
@@ -94,7 +93,7 @@ class ReactionList(ListPageSource):
         return await self.write_page(menu, entries)
 
 
-class Select(discord.ui.MentionableSelect):
+class Select(discord.ui.RoleSelect):
     def __init__(self):
         super().__init__(placeholder="対象を選択してください", min_values=0, max_values=25)
         self.aggregation_mng = AggregationManager()
@@ -373,7 +372,7 @@ class ReactionAggregator(commands.Cog):
             await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
         if not isinstance(interaction.channel, discord.abc.Messageable):
             return
-        await interaction.channel.send(f"エラーが発生しました。{error}")
+        await interaction.channel.send(f"エラーが発生しました。BOT使用者やBOT管理者は設定されていますか？{error}")
 
     @app_commands.command(name="list_reaction")
     @app_commands.check(app_has_bot_user)
@@ -528,7 +527,7 @@ class ReactionAggregator(commands.Cog):
     @app_commands.default_permissions(manage_guild=True)
     @app_commands.guild_only()
     async def register_manage_role(
-            self, interaction: discord.Interaction, bot_manager: discord.Role, bot_user: discord.Role
+        self, interaction: discord.Interaction, bot_manager: discord.Role, bot_user: discord.Role
     ):
         """bot管理者とbot使用者を登録するコマンド、順番注意
 
@@ -624,7 +623,8 @@ class ReactionAggregator(commands.Cog):
             elif len(set(reaction_data.ping_id) & set(member_role_ids)) == 0:
                 # bot使用者からのmatteなら拒否しない
                 if "matte" in reaction.emoji.name and c.has_bot_user(
-                        self.bot.get_guild(reaction.guild_id), reaction.member):
+                    self.bot.get_guild(reaction.guild_id), reaction.member
+                ):
                     pass
                 else:
                     msg = await channel.fetch_message(reaction.message_id)
@@ -742,7 +742,8 @@ class ReactionAggregator(commands.Cog):
         channel = self.bot.get_channel(reaction.channel_id)
         if not isinstance(channel, discord.abc.Messageable):
             logger.warn(
-                f"channel is not TextChannel @send_remind guild_id={reaction.guild_id} channel_id={reaction.channel_id} message_id={reaction.message_id}")
+                f"channel is not TextChannel @send_remind guild_id={reaction.guild_id} channel_id={reaction.channel_id} message_id={reaction.message_id}"
+            )
             return
         url = c.get_msg_url_from_reaction(reaction)
         guild = self.bot.get_guild(reaction.guild_id)

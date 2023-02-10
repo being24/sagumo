@@ -130,7 +130,7 @@ class InactiveDetector(commands.Cog):
             self.inactive_loop.start()
 
         if message.guild is None:
-            logger.warning(f"guild not found @ inactive, by {message.author.name}, {message.content}")
+            logger.info(f"guild not found @ inactive, by {message.author.name}, {message.content}")
             return
 
         if not isinstance(message.author, discord.Member):
