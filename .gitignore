@@ -134,6 +134,7 @@ dmypy.json
 *.ini
 token
 *.json
+!.devcontainer/devcontainer.json
 !pyrightconfig.json
 *.sqlite3
 *.ipynb
