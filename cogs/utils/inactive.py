@@ -118,7 +118,7 @@ class InactiveManager:
         Returns:
             Optional[List[int]]: 有効なメンバーID
         """
-        stmt = select([InactiveDetectorDB.user_id]).where(InactiveDetectorDB.active)
+        stmt = select(InactiveDetectorDB.user_id).where(InactiveDetectorDB.active)
         async with AsyncSession(engine) as session:
             async with session.begin():
                 result = await session.execute(stmt)
@@ -136,7 +136,7 @@ class InactiveManager:
         Returns:
             Optional[List[int]]: 非アクティブなメンバーID
         """
-        stmt = select([InactiveDetectorDB.user_id]).where(InactiveDetectorDB.active == False)
+        stmt = select(InactiveDetectorDB.user_id).where(InactiveDetectorDB.active == False)
 
         async with AsyncSession(engine) as session:
             async with session.begin():
@@ -156,7 +156,7 @@ class InactiveManager:
             Optional[List[int]]: 全メンバーID
         """
 
-        stmt = select([InactiveDetectorDB.user_id])
+        stmt = select(InactiveDetectorDB.user_id)
         async with AsyncSession(engine) as session:
             async with session.begin():
                 result = await session.execute(stmt)
@@ -177,7 +177,7 @@ class InactiveManager:
         Returns:
             bool: 対象であればTrue
         """
-        stmt = select([InactiveDetectorDB.user_id]).where(InactiveDetectorDB.user_id == member_id)
+        stmt = select(InactiveDetectorDB.user_id).where(InactiveDetectorDB.user_id == member_id)
         async with AsyncSession(engine) as session:
             async with session.begin():
                 result = await session.execute(stmt)
@@ -243,10 +243,7 @@ class InactiveManager:
         """
         now = datetime.utcnow()
         month_ago = now - relativedelta(months=month)
-        stmt = (
-            select([InactiveDetectorDB.user_id])
-            .where(InactiveDetectorDB.notified is False))
-                   
+        stmt = select(InactiveDetectorDB.user_id).where(InactiveDetectorDB.notified is False)
 
         async with AsyncSession(engine) as session:
             async with session.begin():
@@ -254,9 +251,9 @@ class InactiveManager:
                 result = result.fetchall()
                 result = [member.user_id for member in result]
 
-#      .where(InactiveDetectorDB.notified == False)
-#     .filter(or_(InactiveDetectorDB.last_posted < month_ago, InactiveDetectorDB.last_react < month_ago))
-# )
+        #      .where(InactiveDetectorDB.notified == False)
+        #     .filter(or_(InactiveDetectorDB.last_posted < month_ago, InactiveDetectorDB.last_react < month_ago))
+        # )
 
         if len(result) == 0:
             return None
