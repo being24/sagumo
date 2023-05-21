@@ -1,0 +1,11 @@
+{
+    "app_commandのテンプレ": {
+        "prefix": "app_command",
+        "body": [
+            "@app_commands.command(name=\"${1:command_name}\", description=\"${1:description}\")",
+            "@app_commands.guilds(ASHURA_GUILD, PLAYGROUND_GUILD)",
+            "@app_commands.default_permissions(administrator=True)"
+        ],
+        "description": "app_commandのテンプレ"
+    }
+}
