@@ -11,11 +11,12 @@
 		"vscode": {
 			"extensions": [
 				"njpwerner.autodocstring",
+				"ms-python.black-formatter",
+				"streetsidesoftware.code-spell-checker",
 				"mhutchie.git-graph",
 				"GitHub.copilot",
 				"seatonjiang.gitmoji-vscode",
 				"oderwat.indent-rainbow",
-				"mgesbert.python-path",
 				"shardulm94.trailing-spaces",
 				"ms-python.python",
 				"ms-python.vscode-pylance"
