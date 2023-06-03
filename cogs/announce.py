@@ -111,24 +111,28 @@ class MyModal(commands.Cog, name="Modal管理用cog"):
                 embed.add_field(name="・対応", value=self.deal.value, inline=False)
                 embed.set_author(name=f"{user.name} ID:{user.id}", icon_url=user.display_avatar)
 
-                try:
-                    await interaction.channel.send(embed=embed)
-                except discord.Forbidden:
-                    await interaction.response.send_message("メッセージの送信に失敗しました。Forbidden", ephemeral=True)
-                except discord.HTTPException:
-                    await interaction.response.send_message("メッセージの送信に失敗しました。HTTPException", ephemeral=True)
+                await interaction.channel.send(embed=embed)
 
-                await interaction.response.send_message("処分記録を行いました", ephemeral=True)
+                await interaction.response.send_message("処分記録を行いました", delete_after=5, ephemeral=True)
+
+            async def on_error(self, interaction: discord.Interaction, error: Exception):
+                if isinstance(error, discord.Forbidden):
+                    await interaction.response.send_message("メッセージの送信に失敗しました。Forbidden", ephemeral=True)
+                elif isinstance(error, discord.HTTPException):
+                    await interaction.response.send_message("メッセージの送信に失敗しました。HTTPException", ephemeral=True)
 
         await interaction.response.send_modal(ProxyModal())
 
     @disposition_record.error
     async def disposition_record_error(self, interaction: discord.Interaction, error):
-        if isinstance(error, commands.CheckFailure):
-            await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
         if not isinstance(interaction.channel, discord.abc.Messageable):
+            self.logger.info(f"{interaction.channel}はメッセージ送信できないチャンネルです{error}")
             return
-        await interaction.response.send_message(f"エラーが発生しました。{error}")
+
+        if isinstance(error, commands.CheckFailure):
+            await interaction.channel.send("このコマンドを実行する権限がありません")
+
+        await interaction.channel.send(f"エラーが発生しました。{error}")
 
 
 async def setup(bot):
