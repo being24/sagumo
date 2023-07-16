@@ -432,7 +432,8 @@ class ReactionAggregator(commands.Cog):
 
             embed = discord.Embed(title="規定数のリアクションがたまりました")
             embed.add_field(name="終了した集計のリンク", value=f"{url}", inline=False)
-            embed.add_field(name="集計完了時間", value=f"{now.strftime('%Y-%m-%d %H:%M:%S')}", inline=False)
+            embed.add_field(name="集計完了時間", value=f"<t:{int(now.timestamp())}:f>", inline=False)
+            embed.add_field(name="集計数", value=f"{reaction_data.sum}/{reaction_data.target_value}", inline=False)
             embed.set_footer(text=f"target : {roles}")
 
             author = guild.get_member(reaction_data.author_id)
