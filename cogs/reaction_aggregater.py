@@ -166,10 +166,122 @@ class Select(discord.ui.RoleSelect):
         )
 
 
+class PersonalSelect(discord.ui.UserSelect):
+    def __init__(self):
+        super().__init__(placeholder="対象を選択してください", min_values=0, max_values=25)
+        self.aggregation_mng = AggregationManager()
+
+    async def callback(self, interaction: discord.Interaction):
+        if self.view is None:
+            return
+        # select menuを無効にする
+        for item in self.view.children:
+            item.disabled = True
+        await self.view.message.edit(view=self.view)
+
+        if isinstance(interaction.message, discord.Message):
+            await c.delete_after(interaction.message)
+
+        target_value = target_value_dict.pop(self.custom_id)
+        if target_value is None:
+            logger.warn("target_value is None")
+            return
+
+        if interaction.guild is None:
+            logger.warn("guild is None")
+            return
+
+        # self.valuesから自分自身を除いたidのリストを作成
+        insert_roles_ids = [
+            role_or_member.id for role_or_member in self.values if role_or_member.id != interaction.guild.me.id
+        ]
+
+        first_msg = f"リアクション集計を行います: 目標リアクション数 : **{target_value}**"
+
+        if len(insert_roles_ids) > 0:
+            mid_msg = f"指定された役職/ユーザー : {' '.join([role_or_member.mention for role_or_member in self.values])}\n"
+        else:
+            mid_msg = ""
+
+        insert_roles_str = ",".join([str(id) for id in insert_roles_ids])
+
+        last_msg = "本メッセージにリアクションをつけてください"
+
+        await interaction.response.send_message(
+            f"{first_msg}\n{mid_msg}{last_msg}",
+            allowed_mentions=discord.AllowedMentions(everyone=False, roles=True, users=True),
+        )
+        msg = await interaction.original_response()
+
+        now = discord.utils.utcnow()
+
+        if interaction.guild is None:
+            logger.warn("interaction.guild is None")
+            return
+
+        if interaction.channel is None:
+            logger.warn("interaction.channel is None")
+            return
+
+        if self.view is None:
+            logger.warn("self.view is None")
+            return
+
+        await self.aggregation_mng.register_aggregation(
+            message_id=msg.id,
+            command_id=self.view.message.id,
+            guild_id=interaction.guild.id,
+            channel_id=interaction.channel.id,
+            target_value=target_value,
+            author_id=interaction.user.id,
+            created_at=now,
+            ping_id=insert_roles_str,
+        )
+
+
 class SelectView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=120)
         self.add_item(Select())
+
+    async def on_timeout(self):
+        # タイムアウトしたら消す
+        for item in self.children:
+            item.disabled = True  # type: ignore
+        try:
+            await self.message.edit(view=self)  # type: ignore
+        except discord.NotFound:
+            pass
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        # 実行者と選択者が違ったらFalseを返す
+        if interaction.message is None:
+            return False
+
+        if interaction.message.interaction is None:
+            return False
+
+        if interaction.user != interaction.message.interaction.user:
+            raise NotSameUserError("実行者と選択者が違います")
+
+        return True
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item):
+        if isinstance(error, NotSameUserError):
+            await interaction.response.send_message("実行者と選択者が違います", ephemeral=True)
+            return
+        if not isinstance(interaction.channel, discord.abc.Messageable):
+            return
+        await interaction.channel.send(f"エラーが発生しました。{error}")
+
+    async def wait(self):
+        print("wait")
+
+
+class PersonalSelectView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=120)
+        self.add_item(PersonalSelect())
 
     async def on_timeout(self):
         # タイムアウトしたら消す
@@ -320,7 +432,8 @@ class ReactionAggregator(commands.Cog):
 
             embed = discord.Embed(title="規定数のリアクションがたまりました")
             embed.add_field(name="終了した集計のリンク", value=f"{url}", inline=False)
-            embed.add_field(name="集計完了時間", value=f"{now.strftime('%Y-%m-%d %H:%M:%S')}", inline=False)
+            embed.add_field(name="集計完了時間", value=f"<t:{int(now.timestamp())}:f>", inline=False)
+            embed.add_field(name="集計数", value=f"{reaction_data.sum}/{reaction_data.target_value}", inline=False)
             embed.set_footer(text=f"target : {roles}")
 
             author = guild.get_member(reaction_data.author_id)
@@ -368,6 +481,33 @@ class ReactionAggregator(commands.Cog):
 
     @count.error
     async def count_error(self, interaction: discord.Interaction, error: Exception):
+        if isinstance(error, commands.CheckFailure):
+            await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
+        if not isinstance(interaction.channel, discord.abc.Messageable):
+            return
+        await interaction.channel.send(f"エラーが発生しました。BOT使用者やBOT管理者は設定されていますか？{error}")
+
+    @app_commands.command(name="personal_count")
+    @app_commands.check(app_has_bot_user)
+    @app_commands.guild_only()
+    async def personal_count(self, interaction: discord.Interaction, target_value: int):
+        """個人向けのリアクション集計を開始するコマンド
+
+        Args:
+            target_value (int): 集計するリアクションの数
+        """
+
+        if target_value <= 0:
+            await interaction.response.send_message("引数を正しく入力してください")
+            return
+        view = PersonalSelectView()
+        await interaction.response.send_message("対象を選択してください", view=view)
+
+        view.message = await interaction.original_response()  # type: ignore
+        target_value_dict[view.children[0].custom_id] = target_value  # type: ignore
+
+    @personal_count.error
+    async def personal_count_error(self, interaction: discord.Interaction, error: Exception):
         if isinstance(error, commands.CheckFailure):
             await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
         if not isinstance(interaction.channel, discord.abc.Messageable):

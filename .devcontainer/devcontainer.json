@@ -23,7 +23,7 @@
 			]
 		}
 	},
-	"postCreateCommand": "pip3 install -r requirements.txt && pip install -U git+https://github.com/Rapptz/discord-ext-menus"
+	"postCreateCommand": "pip3 install -r requirements.txt"
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
