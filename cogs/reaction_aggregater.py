@@ -13,6 +13,7 @@ from .utils.common import CommonUtil
 from .utils.reaction_aggregation_manager import AggregationManager, ReactionParameter
 from .utils.setting_manager import SettingManager
 
+
 c = CommonUtil()
 logger = logging.getLogger("discord")
 
@@ -541,10 +542,8 @@ class ReactionAggregator(commands.Cog):
             return
 
         await interaction.response.send_message("リアクション集計一覧を表示します")
-        message = await interaction.original_response()
-        # await c.delete_after(message, 1)
 
-        ctx: commands.Context = await self.bot.get_context(message)
+        ctx: commands.Context = await self.bot.get_context(interaction)
         await self.start_paginating(ctx, reaction_list_of_guild)
 
     @list_reaction.error
@@ -754,6 +753,9 @@ class ReactionAggregator(commands.Cog):
             member_role_ids = [role.id for role in reaction.member.roles]
             member_role_ids.append(reaction.user_id)
             channel = self.bot.get_channel(reaction.channel_id)
+            if not isinstance(channel, discord.abc.Messageable):
+                return
+            message = await channel.fetch_message(message_id)
 
             if not isinstance(channel, discord.abc.Messageable):
                 return
@@ -767,21 +769,30 @@ class ReactionAggregator(commands.Cog):
                 ):
                     pass
                 else:
-                    msg = await channel.fetch_message(reaction.message_id)
                     try:
-                        await msg.remove_reaction(str(reaction.emoji), reaction.member)
+                        await message.remove_reaction(str(reaction.emoji), reaction.member)
                     except discord.Forbidden:
                         await channel.send("リアクションの除去に失敗しました.")
                     notify_msg = await channel.send(f"{reaction.member.mention} 権限無しのリアクションは禁止です！")
                     # await self.delete_after(notify_msg)
                     return
 
+            # messageについてるリアクションを、matteとそれ以外に分ける
+            matte_reactions = []
+            other_reactions = []
+
+            for added_reaction in message.reactions:
+                if "matte" in reaction.emoji.name:
+                    matte_reactions.append(added_reaction)
+                else:
+                    other_reactions.append(added_reaction)
+
             if "matte" in reaction.emoji.name:
-                await self.aggregation_mng.set_value_to_matte(message_id=message_id, val=reaction_data.matte + 1)
-                msg = await channel.fetch_message(reaction.message_id)
-                await msg.edit(content=msg.content + "\n待ちます")
+                await self.aggregation_mng.set_value_to_matte(message_id=message_id, val=len(matte_reactions))
+                message = await channel.fetch_message(reaction.message_id)
+                await message.edit(content=message.content + "\n待ちます")
             else:
-                await self.aggregation_mng.set_value_to_sum(message_id=message_id, val=reaction_data.sum + 1)
+                await self.aggregation_mng.set_value_to_sum(message_id=message_id, val=len(other_reactions))
 
             await self.judge_and_notice(message_id)
 
@@ -798,6 +809,11 @@ class ReactionAggregator(commands.Cog):
         if reaction_data := await self.aggregation_mng.get_aggregation(reaction.message_id):
             message_id = reaction.message_id
             guild = self.bot.get_guild(reaction_data.guild_id)
+            channel = self.bot.get_channel(reaction.channel_id)
+            if not isinstance(channel, discord.abc.Messageable):
+                return
+            message = await channel.fetch_message(message_id)
+
             if guild is None:
                 logger.warn("guild is None @on_raw_reaction_remove")
                 return
@@ -822,13 +838,23 @@ class ReactionAggregator(commands.Cog):
                 if "matte" in reaction.emoji.name and c.has_bot_user(self.bot.get_guild(reaction.guild_id), remove_usr):
                     return
 
+            # messageについてるリアクションを、matteとそれ以外に分ける
+            matte_reactions = []
+            other_reactions = []
+
+            for added_reaction in message.reactions:
+                if "matte" in reaction.emoji.name:
+                    matte_reactions.append(added_reaction)
+                else:
+                    other_reactions.append(added_reaction)
+
             if "matte" in reaction.emoji.name:
-                await self.aggregation_mng.set_value_to_matte(message_id=message_id, val=reaction_data.matte - 1)
+                await self.aggregation_mng.set_value_to_matte(message_id=message_id, val=len(matte_reactions))
                 msg = await channel.fetch_message(reaction.message_id)
                 await msg.edit(content=msg.content.replace("\n待ちます", "", 1))
             else:
                 await self.aggregation_mng.unset_value_to_notified(message_id=message_id)
-                await self.aggregation_mng.set_value_to_sum(message_id=message_id, val=reaction_data.sum - 1)
+                await self.aggregation_mng.set_value_to_sum(message_id=message_id, val=len(other_reactions))
 
             await self.judge_and_notice(message_id)
 

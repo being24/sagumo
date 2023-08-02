@@ -18,7 +18,7 @@ RUN set -x && \
     cp /usr/share/zoneinfo/Asia/Tokyo /etc/localtime && \
     python3 -m pip install -U setuptools && \
     python3 -m pip install -r ./${BOT_NAME}/requirements.txt && \
-    pip install -U git+https://github.com/Rapptz/discord-ext-menus && \
+    # pip install -U git+https://github.com/being24/discord-ext-menus && \
     chmod 0700 ./${BOT_NAME}/bot.py && \
     apk del build-base  && \
     rm -rf /var/cache/apk/*  && \
