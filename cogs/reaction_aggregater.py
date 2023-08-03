@@ -404,7 +404,11 @@ class ReactionAggregator(commands.Cog):
         if reaction_data is None:
             return
 
-        if reaction_data.target_value >= reaction_data.sum and reaction_data.matte == 0:
+        # もし、reaction_data.sumがreaction_data.target_valueを下回っているか、reaction_data.matteが0より大きいなら、notified_atをNoneにする
+        if reaction_data.target_value > reaction_data.sum or reaction_data.matte > 0:
+            await self.aggregation_mng.unset_value_to_notified(message_id=message_id)
+
+        if reaction_data.target_value == reaction_data.sum and reaction_data.matte == 0:
             channel = self.bot.get_channel(reaction_data.channel_id)
             guild = self.bot.get_guild(reaction_data.guild_id)
             if channel is None or guild is None:
