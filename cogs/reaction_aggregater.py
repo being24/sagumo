@@ -786,7 +786,12 @@ class ReactionAggregator(commands.Cog):
             other_reactions = []
 
             for added_reaction in message.reactions:
-                if "matte" in reaction.emoji.name:
+                if isinstance(added_reaction.emoji, str):
+                    added_reaction_name = added_reaction.emoji
+                else:
+                    added_reaction_name = added_reaction.emoji.name
+
+                if "matte" in added_reaction_name:
                     matte_reactions.append(added_reaction)
                 else:
                     other_reactions.append(added_reaction)
@@ -847,7 +852,12 @@ class ReactionAggregator(commands.Cog):
             other_reactions = []
 
             for added_reaction in message.reactions:
-                if "matte" in reaction.emoji.name:
+                if isinstance(added_reaction.emoji, str):
+                    added_reaction_name = added_reaction.emoji
+                else:
+                    added_reaction_name = added_reaction.emoji.name
+
+                if "matte" in added_reaction_name:
                     matte_reactions.append(added_reaction)
                 else:
                     other_reactions.append(added_reaction)
