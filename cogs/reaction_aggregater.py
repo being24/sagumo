@@ -56,9 +56,8 @@ class ReactionList(ListPageSource):
 
         for num, reaction in enumerate(fields):
             # USTのreaction.created_atをJSTに変換
-            created_at = reaction.created_at.astimezone(ZoneInfo("Asia/Tokyo"))
 
-            time = created_at.strftime("%Y-%m-%d %H:%M:%S")
+            time = f"<t:{int(reaction.created_at.timestamp())}:f>"
 
             url = c.get_msg_url_from_reaction(reaction)
 
@@ -782,8 +781,8 @@ class ReactionAggregator(commands.Cog):
                     return
 
             # messageについてるリアクションを、matteとそれ以外に分ける
-            matte_reactions = []
-            other_reactions = []
+            matte_reactions = 0
+            other_reactions = 0
 
             for added_reaction in message.reactions:
                 if isinstance(added_reaction.emoji, str):
@@ -792,16 +791,16 @@ class ReactionAggregator(commands.Cog):
                     added_reaction_name = added_reaction.emoji.name
 
                 if "matte" in added_reaction_name:
-                    matte_reactions.append(added_reaction)
+                    matte_reactions += added_reaction.count
                 else:
-                    other_reactions.append(added_reaction)
+                    other_reactions += added_reaction.count
 
             if "matte" in reaction.emoji.name:
-                await self.aggregation_mng.set_value_to_matte(message_id=message_id, val=len(matte_reactions))
+                await self.aggregation_mng.set_value_to_matte(message_id=message_id, val=matte_reactions)
                 message = await channel.fetch_message(reaction.message_id)
                 await message.edit(content=message.content + "\n待ちます")
             else:
-                await self.aggregation_mng.set_value_to_sum(message_id=message_id, val=len(other_reactions))
+                await self.aggregation_mng.set_value_to_sum(message_id=message_id, val=other_reactions)
 
             await self.judge_and_notice(message_id)
 
@@ -848,8 +847,8 @@ class ReactionAggregator(commands.Cog):
                     return
 
             # messageについてるリアクションを、matteとそれ以外に分ける
-            matte_reactions = []
-            other_reactions = []
+            matte_reactions = 0
+            other_reactions = 0
 
             for added_reaction in message.reactions:
                 if isinstance(added_reaction.emoji, str):
@@ -858,17 +857,16 @@ class ReactionAggregator(commands.Cog):
                     added_reaction_name = added_reaction.emoji.name
 
                 if "matte" in added_reaction_name:
-                    matte_reactions.append(added_reaction)
+                    matte_reactions += added_reaction.count
                 else:
-                    other_reactions.append(added_reaction)
+                    other_reactions += added_reaction.count
 
             if "matte" in reaction.emoji.name:
-                await self.aggregation_mng.set_value_to_matte(message_id=message_id, val=len(matte_reactions))
-                msg = await channel.fetch_message(reaction.message_id)
-                await msg.edit(content=msg.content.replace("\n待ちます", "", 1))
+                await self.aggregation_mng.set_value_to_matte(message_id=message_id, val=matte_reactions)
+                message = await channel.fetch_message(reaction.message_id)
+                await message.edit(content=message.content + "\n待ちます")
             else:
-                await self.aggregation_mng.unset_value_to_notified(message_id=message_id)
-                await self.aggregation_mng.set_value_to_sum(message_id=message_id, val=len(other_reactions))
+                await self.aggregation_mng.set_value_to_sum(message_id=message_id, val=other_reactions)
 
             await self.judge_and_notice(message_id)
 
