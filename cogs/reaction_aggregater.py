@@ -796,11 +796,11 @@ class ReactionAggregator(commands.Cog):
                     other_reactions += added_reaction.count
 
             if "matte" in reaction.emoji.name:
-                await self.aggregation_mng.set_value_to_matte(message_id=message_id, val=matte_reactions)
                 message = await channel.fetch_message(reaction.message_id)
                 await message.edit(content=message.content + "\n待ちます")
-            else:
-                await self.aggregation_mng.set_value_to_sum(message_id=message_id, val=other_reactions)
+
+            await self.aggregation_mng.set_value_to_matte(message_id=message_id, val=matte_reactions)
+            await self.aggregation_mng.set_value_to_sum(message_id=message_id, val=other_reactions)
 
             await self.judge_and_notice(message_id)
 
@@ -862,11 +862,12 @@ class ReactionAggregator(commands.Cog):
                     other_reactions += added_reaction.count
 
             if "matte" in reaction.emoji.name:
-                await self.aggregation_mng.set_value_to_matte(message_id=message_id, val=matte_reactions)
                 message = await channel.fetch_message(reaction.message_id)
-                await message.edit(content=message.content + "\n待ちます")
-            else:
-                await self.aggregation_mng.set_value_to_sum(message_id=message_id, val=other_reactions)
+                # message.contentから待ちますを削除する
+                await message.edit(content=message.content.replace("\n待ちます", ""))
+
+            await self.aggregation_mng.set_value_to_matte(message_id=message_id, val=matte_reactions)
+            await self.aggregation_mng.set_value_to_sum(message_id=message_id, val=other_reactions)
 
             await self.judge_and_notice(message_id)
 
