@@ -15,8 +15,8 @@ class Admin(commands.Cog, name="管理用コマンド群"):
     管理用のコマンドです
     """
 
-    def __init__(self, bot):
-        self.bot: commands.Bot = bot
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
         self.c = CommonUtil()
 
         self.master_path = pathlib.Path(__file__).parents[1]
@@ -91,7 +91,7 @@ class Admin(commands.Cog, name="管理用コマンド群"):
         await ctx.send(files=[discord_log])
 
     @commands.command(hidden=True)
-    async def restore_one(self, ctx):
+    async def restore_one(self, ctx: commands.Context):
         if ctx.message.attachments is None:
             await ctx.send("ファイルが添付されていません")
 
