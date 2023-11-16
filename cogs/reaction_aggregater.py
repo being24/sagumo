@@ -47,12 +47,18 @@ class ReactionList(ListPageSource):
         offset = (menu.current_page * self.per_page) + 1
         len_data = len(self.entries)
 
-        embed = discord.Embed(title="集計中のリアクションは以下の通りです", description=f"本サーバーでは{len_data}件集計中", color=0x0088FF)
+        embed = discord.Embed(
+            title="集計中のリアクションは以下の通りです",
+            description=f"本サーバーでは{len_data}件集計中",
+            color=0x0088FF,
+        )
         if self.ctx.guild is None or self.ctx.guild.me.avatar is None:
             return
         embed.set_thumbnail(url=self.ctx.guild.me.avatar.replace(format="png").url)
 
-        embed.set_footer(text=f"{offset:,} - {min(len_data, offset + self.per_page - 1):,} of {len_data:,} records.")
+        embed.set_footer(
+            text=f"{offset:,} - {min(len_data, offset + self.per_page - 1):,} of {len_data:,} records."
+        )
 
         for num, reaction in enumerate(fields):
             # USTのreaction.created_atをJSTに変換
@@ -61,7 +67,12 @@ class ReactionList(ListPageSource):
 
             url = c.get_msg_url_from_reaction(reaction)
 
-            target = " ".join([f"{c.return_member_or_role(self.ctx.guild, id).mention}" for id in reaction.ping_id])
+            target = " ".join(
+                [
+                    f"{c.return_member_or_role(self.ctx.guild, id).mention}"
+                    for id in reaction.ping_id
+                ]
+            )
 
             if reaction.matte:
                 matte = " **待って！**"
@@ -95,7 +106,9 @@ class ReactionList(ListPageSource):
 
 class Select(discord.ui.RoleSelect):
     def __init__(self):
-        super().__init__(placeholder="対象を選択してください", min_values=0, max_values=25)
+        super().__init__(
+            placeholder="対象を選択してください", min_values=0, max_values=25
+        )
         self.aggregation_mng = AggregationManager()
 
     async def callback(self, interaction: discord.Interaction):
@@ -120,10 +133,14 @@ class Select(discord.ui.RoleSelect):
 
         # self.valuesから自分自身を除いたidのリストを作成
         insert_roles_ids = [
-            role_or_member.id for role_or_member in self.values if role_or_member.id != interaction.guild.me.id
+            role_or_member.id
+            for role_or_member in self.values
+            if role_or_member.id != interaction.guild.me.id
         ]
 
-        first_msg = f"リアクション集計を行います: 目標リアクション数 : **{target_value}**"
+        first_msg = (
+            f"リアクション集計を行います: 目標リアクション数 : **{target_value}**"
+        )
 
         if len(insert_roles_ids) > 0:
             mid_msg = f"指定された役職/ユーザー : {' '.join([role_or_member.mention for role_or_member in self.values])}\n"
@@ -136,7 +153,9 @@ class Select(discord.ui.RoleSelect):
 
         await interaction.response.send_message(
             f"{first_msg}\n{mid_msg}{last_msg}",
-            allowed_mentions=discord.AllowedMentions(everyone=False, roles=True, users=True),
+            allowed_mentions=discord.AllowedMentions(
+                everyone=False, roles=True, users=True
+            ),
         )
         msg = await interaction.original_response()
 
@@ -168,7 +187,9 @@ class Select(discord.ui.RoleSelect):
 
 class PersonalSelect(discord.ui.UserSelect):
     def __init__(self):
-        super().__init__(placeholder="対象を選択してください", min_values=0, max_values=25)
+        super().__init__(
+            placeholder="対象を選択してください", min_values=0, max_values=25
+        )
         self.aggregation_mng = AggregationManager()
 
     async def callback(self, interaction: discord.Interaction):
@@ -193,10 +214,14 @@ class PersonalSelect(discord.ui.UserSelect):
 
         # self.valuesから自分自身を除いたidのリストを作成
         insert_roles_ids = [
-            role_or_member.id for role_or_member in self.values if role_or_member.id != interaction.guild.me.id
+            role_or_member.id
+            for role_or_member in self.values
+            if role_or_member.id != interaction.guild.me.id
         ]
 
-        first_msg = f"リアクション集計を行います: 目標リアクション数 : **{target_value}**"
+        first_msg = (
+            f"リアクション集計を行います: 目標リアクション数 : **{target_value}**"
+        )
 
         if len(insert_roles_ids) > 0:
             mid_msg = f"指定された役職/ユーザー : {' '.join([role_or_member.mention for role_or_member in self.values])}\n"
@@ -209,7 +234,9 @@ class PersonalSelect(discord.ui.UserSelect):
 
         await interaction.response.send_message(
             f"{first_msg}\n{mid_msg}{last_msg}",
-            allowed_mentions=discord.AllowedMentions(everyone=False, roles=True, users=True),
+            allowed_mentions=discord.AllowedMentions(
+                everyone=False, roles=True, users=True
+            ),
         )
         msg = await interaction.original_response()
 
@@ -266,9 +293,13 @@ class SelectView(discord.ui.View):
 
         return True
 
-    async def on_error(self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item):
+    async def on_error(
+        self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item
+    ):
         if isinstance(error, NotSameUserError):
-            await interaction.response.send_message("実行者と選択者が違います", ephemeral=True)
+            await interaction.response.send_message(
+                "実行者と選択者が違います", ephemeral=True
+            )
             return
         if not isinstance(interaction.channel, discord.abc.Messageable):
             return
@@ -305,9 +336,13 @@ class PersonalSelectView(discord.ui.View):
 
         return True
 
-    async def on_error(self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item):
+    async def on_error(
+        self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item
+    ):
         if isinstance(error, NotSameUserError):
-            await interaction.response.send_message("実行者と選択者が違います", ephemeral=True)
+            await interaction.response.send_message(
+                "実行者と選択者が違います", ephemeral=True
+            )
             return
         if not isinstance(interaction.channel, discord.abc.Messageable):
             return
@@ -323,7 +358,9 @@ class Confirm(discord.ui.View):
         self.value = None
 
     @discord.ui.button(label="はい", style=discord.ButtonStyle.green)
-    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def confirm(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         await interaction.response.send_message("はい", ephemeral=True)
         self.value = True
         self.stop()
@@ -357,7 +394,11 @@ class ReactionAggregator(commands.Cog):
         if reaction_list_of_guild is None:
             await ctx.send("集計中のリアクションはありません")
         else:
-            menu = MenuPages(source=ReactionList(ctx, reaction_list_of_guild), delete_message_after=True, timeout=60.0)
+            menu = MenuPages(
+                source=ReactionList(ctx, reaction_list_of_guild),
+                delete_message_after=True,
+                timeout=60.0,
+            )
             await menu.start(ctx)
 
     async def change_delete_msg(self, channel_id: int, message_id: int) -> None:
@@ -407,7 +448,11 @@ class ReactionAggregator(commands.Cog):
         if reaction_data.target_value > reaction_data.sum or reaction_data.matte > 0:
             await self.aggregation_mng.unset_value_to_notified(message_id=message_id)
 
-        if reaction_data.target_value == reaction_data.sum and reaction_data.matte == 0:
+        if (
+            reaction_data.target_value <= reaction_data.sum
+            and reaction_data.matte == 0
+            and reaction_data.notified_at is None
+        ):
             channel = self.bot.get_channel(reaction_data.channel_id)
             guild = self.bot.get_guild(reaction_data.guild_id)
             if channel is None or guild is None:
@@ -423,7 +468,9 @@ class ReactionAggregator(commands.Cog):
 
             url = c.get_msg_url_from_reaction(reaction_data)
 
-            roles = [c.return_member_or_role(guild, id).name for id in reaction_data.ping_id]
+            roles = [
+                c.return_member_or_role(guild, id).name for id in reaction_data.ping_id
+            ]
 
             if len(roles) == 0:
                 roles = "None"
@@ -432,12 +479,20 @@ class ReactionAggregator(commands.Cog):
 
             now = discord.utils.utcnow()
 
-            await self.aggregation_mng.set_value_to_notified(reaction_data.message_id, now)
+            await self.aggregation_mng.set_value_to_notified(
+                reaction_data.message_id, now
+            )
 
             embed = discord.Embed(title="規定数のリアクションがたまりました")
             embed.add_field(name="終了した集計のリンク", value=f"{url}", inline=False)
-            embed.add_field(name="集計完了時間", value=f"<t:{int(now.timestamp())}:f>", inline=False)
-            embed.add_field(name="集計数", value=f"{reaction_data.sum}/{reaction_data.target_value}", inline=False)
+            embed.add_field(
+                name="集計完了時間", value=f"<t:{int(now.timestamp())}:f>", inline=False
+            )
+            embed.add_field(
+                name="集計数",
+                value=f"{reaction_data.sum}/{reaction_data.target_value}",
+                inline=False,
+            )
             embed.set_footer(text=f"target : {roles}")
 
             author = guild.get_member(reaction_data.author_id)
@@ -449,13 +504,18 @@ class ReactionAggregator(commands.Cog):
             try:
                 await channel.send(f"{author_mention}", embed=embed)
             except discord.Forbidden:
-                logger.warn(f"send message is forbidden. channel_id: {channel}, guild_id: {guild}")
+                logger.warn(
+                    f"send message is forbidden. channel_id: {channel}, guild_id: {guild}"
+                )
                 return
 
             msg = await channel.fetch_message(reaction_data.message_id)
             await msg.edit(content=msg.content + "\n\t終了しました")
 
-        elif reaction_data.notified_at is not Null and reaction_data.target_value > reaction_data.sum:
+        elif (
+            reaction_data.notified_at is not Null
+            and reaction_data.target_value > reaction_data.sum
+        ):
             channel = self.bot.get_channel(reaction_data.channel_id)
 
             if not isinstance(channel, discord.abc.Messageable):
@@ -486,10 +546,14 @@ class ReactionAggregator(commands.Cog):
     @count.error
     async def count_error(self, interaction: discord.Interaction, error: Exception):
         if isinstance(error, commands.CheckFailure):
-            await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
+            await interaction.response.send_message(
+                "このコマンドを実行する権限がありません", ephemeral=True
+            )
         if not isinstance(interaction.channel, discord.abc.Messageable):
             return
-        await interaction.channel.send(f"エラーが発生しました。BOT使用者やBOT管理者は設定されていますか？{error}")
+        await interaction.channel.send(
+            f"エラーが発生しました。BOT使用者やBOT管理者は設定されていますか？{error}"
+        )
 
     @app_commands.command(name="personal_count")
     @app_commands.check(app_has_bot_user)
@@ -511,12 +575,18 @@ class ReactionAggregator(commands.Cog):
         target_value_dict[view.children[0].custom_id] = target_value  # type: ignore
 
     @personal_count.error
-    async def personal_count_error(self, interaction: discord.Interaction, error: Exception):
+    async def personal_count_error(
+        self, interaction: discord.Interaction, error: Exception
+    ):
         if isinstance(error, commands.CheckFailure):
-            await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
+            await interaction.response.send_message(
+                "このコマンドを実行する権限がありません", ephemeral=True
+            )
         if not isinstance(interaction.channel, discord.abc.Messageable):
             return
-        await interaction.channel.send(f"エラーが発生しました。BOT使用者やBOT管理者は設定されていますか？{error}")
+        await interaction.channel.send(
+            f"エラーが発生しました。BOT使用者やBOT管理者は設定されていますか？{error}"
+        )
 
     @app_commands.command(name="list_reaction")
     @app_commands.check(app_has_bot_user)
@@ -531,14 +601,20 @@ class ReactionAggregator(commands.Cog):
             logger.warn("guild is None @list_reaction")
             return
 
-        reaction_list_of_guild = await self.aggregation_mng.get_guild_list(interaction.guild.id)
+        reaction_list_of_guild = await self.aggregation_mng.get_guild_list(
+            interaction.guild.id
+        )
 
         if reaction_list_of_guild is None:
             await interaction.response.send_message("集計中のリアクションはありません")
             return
 
         if not all:
-            reaction_list_of_guild = [reaction for reaction in reaction_list_of_guild if reaction.notified_at is None]
+            reaction_list_of_guild = [
+                reaction
+                for reaction in reaction_list_of_guild
+                if reaction.notified_at is None
+            ]
 
         if len(reaction_list_of_guild) == 0:
             await interaction.response.send_message("集計中のリアクションはありません")
@@ -550,20 +626,28 @@ class ReactionAggregator(commands.Cog):
         await self.start_paginating(ctx, reaction_list_of_guild)
 
     @list_reaction.error
-    async def list_reaction_error(self, interaction: discord.Interaction, error: Exception):
+    async def list_reaction_error(
+        self, interaction: discord.Interaction, error: Exception
+    ):
         if isinstance(error, commands.CheckFailure):
-            await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
+            await interaction.response.send_message(
+                "このコマンドを実行する権限がありません", ephemeral=True
+            )
         if not isinstance(interaction.channel, discord.abc.Messageable):
             return
         try:
             await interaction.channel.send(f"エラーが発生しました。{error}")
         except discord.Forbidden:
-            logger.warn(f"send message is forbidden. channel_id: {interaction.channel}, guild_id: {interaction.guild}")
+            logger.warn(
+                f"send message is forbidden. channel_id: {interaction.channel}, guild_id: {interaction.guild}"
+            )
 
     @app_commands.command(name="remove_reaction")
     @app_commands.check(app_has_bot_manager)
     @app_commands.guild_only()
-    async def remove_reaction(self, interaction: discord.Interaction, message_id_str: str):
+    async def remove_reaction(
+        self, interaction: discord.Interaction, message_id_str: str
+    ):
         """リアクション集計を削除するコマンド
 
         Args:
@@ -585,28 +669,41 @@ class ReactionAggregator(commands.Cog):
                 return
 
             view = Confirm()
-            await interaction.response.send_message(f"ID : {message_id}のリアクション集計を終了し、削除しますか？", view=view)
+            await interaction.response.send_message(
+                f"ID : {message_id}のリアクション集計を終了し、削除しますか？",
+                view=view,
+            )
             await view.wait()
             if view.value is None:
                 await interaction.followup.send("タイムアウトしました")
             elif view.value:
                 await self.aggregation_mng.remove_aggregation(message_id)
-                await interaction.followup.send(f"ID : {message_id}は{interaction.user}により削除されました")
+                await interaction.followup.send(
+                    f"ID : {message_id}は{interaction.user}により削除されました"
+                )
                 await self.change_delete_msg(interaction.channel.id, message_id)
             else:
-                await interaction.followup.send(f"ID : {message_id}の削除を中止しました")
+                await interaction.followup.send(
+                    f"ID : {message_id}の削除を中止しました"
+                )
                 notify_msg = await interaction.original_response()
                 await c.delete_after(notify_msg)
 
         else:
-            await interaction.response.send_message(f"ID : {message_id}はリアクション集計対象ではありません")
+            await interaction.response.send_message(
+                f"ID : {message_id}はリアクション集計対象ではありません"
+            )
             notify_msg = await interaction.original_response()
             await c.delete_after(notify_msg)
 
     @remove_reaction.error
-    async def remove_reaction_error(self, interaction: discord.Interaction, error: Exception):
+    async def remove_reaction_error(
+        self, interaction: discord.Interaction, error: Exception
+    ):
         if isinstance(error, commands.CheckFailure):
-            await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
+            await interaction.response.send_message(
+                "このコマンドを実行する権限がありません", ephemeral=True
+            )
         if not isinstance(interaction.channel, discord.abc.Messageable):
             return
         await interaction.channel.send(f"エラーが発生しました。{error}")
@@ -614,7 +711,12 @@ class ReactionAggregator(commands.Cog):
     @app_commands.command(name="add_role")
     @app_commands.check(app_has_bot_manager)
     @app_commands.guild_only()
-    async def add_role(self, interaction: discord.Interaction, add_role: discord.Role, has_role: discord.Role):
+    async def add_role(
+        self,
+        interaction: discord.Interaction,
+        add_role: discord.Role,
+        has_role: discord.Role,
+    ):
         """特定の役職持ちに特定のリアクションを付与するコマンド
 
         Args:
@@ -623,7 +725,9 @@ class ReactionAggregator(commands.Cog):
             has_role (discord.Role): この役職を持っている人に付与する
         """
 
-        target_members = [member for member in has_role.members if add_role not in member.roles]
+        target_members = [
+            member for member in has_role.members if add_role not in member.roles
+        ]
 
         if len(target_members) == 0:
             await interaction.response.send_message("対象者はいません")
@@ -641,17 +745,25 @@ class ReactionAggregator(commands.Cog):
 
         for member in target_members:
             try:
-                await member.add_roles(add_role, reason=f"{interaction.guild.me}による自動付与")
-                msg = await interaction.followup.send(f"{member.name}に{add_role.name}を付与しました", ephemeral=True)
+                await member.add_roles(
+                    add_role, reason=f"{interaction.guild.me}による自動付与"
+                )
+                msg = await interaction.followup.send(
+                    f"{member.name}に{add_role.name}を付与しました", ephemeral=True
+                )
                 if msg is not None:
                     await c.delete_after(msg)
                 await asyncio.sleep(0.3)
             except discord.Forbidden:
-                msg = await interaction.followup.send(f"{member.name}への{add_role}に失敗しました。権限不足です")
+                msg = await interaction.followup.send(
+                    f"{member.name}への{add_role}に失敗しました。権限不足です"
+                )
                 if msg is not None:
                     await c.delete_after(msg)
             except BaseException as e:
-                msg = await interaction.followup.send(f"{member.name}への{add_role}に失敗しました。{e}")
+                msg = await interaction.followup.send(
+                    f"{member.name}への{add_role}に失敗しました。{e}"
+                )
                 if msg is not None:
                     await c.delete_after(msg)
 
@@ -660,7 +772,9 @@ class ReactionAggregator(commands.Cog):
     @add_role.error
     async def add_role_error(self, interaction: discord.Interaction, error: Exception):
         if isinstance(error, commands.CheckFailure):
-            await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
+            await interaction.response.send_message(
+                "このコマンドを実行する権限がありません", ephemeral=True
+            )
         if not isinstance(interaction.channel, discord.abc.Messageable):
             return
         await interaction.channel.send(f"エラーが発生しました。{error}")
@@ -669,7 +783,10 @@ class ReactionAggregator(commands.Cog):
     @app_commands.default_permissions(manage_guild=True)
     @app_commands.guild_only()
     async def register_manage_role(
-        self, interaction: discord.Interaction, bot_manager: discord.Role, bot_user: discord.Role
+        self,
+        interaction: discord.Interaction,
+        bot_manager: discord.Role,
+        bot_user: discord.Role,
     ):
         """bot管理者とbot使用者を登録するコマンド、順番注意
 
@@ -685,7 +802,9 @@ class ReactionAggregator(commands.Cog):
 
         if await self.setting_mng.is_exist(interaction.guild.id):
             await self.setting_mng.update_guild(
-                guild_id=interaction.guild.id, bot_manager_id=bot_manager.id, bot_user_id=bot_user.id
+                guild_id=interaction.guild.id,
+                bot_manager_id=bot_manager.id,
+                bot_user_id=bot_user.id,
             )
             await interaction.response.send_message(
                 f"{interaction.guild}のbot管理者に{bot_manager.mention}を、bot操作者に{bot_user.mention}に更新しました",
@@ -693,7 +812,9 @@ class ReactionAggregator(commands.Cog):
             )
         else:
             await self.setting_mng.register_guild(
-                guild_id=interaction.guild.id, bot_manager_id=bot_manager.id, bot_user_id=bot_user.id
+                guild_id=interaction.guild.id,
+                bot_manager_id=bot_manager.id,
+                bot_user_id=bot_user.id,
             )
             await interaction.response.send_message(
                 f"{interaction.guild}のbot管理者に{bot_manager.mention}を、bot操作者に{bot_user.mention}を登録しました",
@@ -701,9 +822,13 @@ class ReactionAggregator(commands.Cog):
             )
 
     @register_manage_role.error
-    async def register_manage_role_error(self, interaction: discord.Interaction, error: Exception):
+    async def register_manage_role_error(
+        self, interaction: discord.Interaction, error: Exception
+    ):
         if isinstance(error, commands.CheckFailure):
-            await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
+            await interaction.response.send_message(
+                "このコマンドを実行する権限がありません", ephemeral=True
+            )
         if not isinstance(interaction.channel, discord.abc.Messageable):
             return
         await interaction.channel.send(f"エラーが発生しました。{error}")
@@ -722,8 +847,12 @@ class ReactionAggregator(commands.Cog):
             return
 
         if guild_setting := await self.setting_mng.get_guild(interaction.guild.id):
-            bot_manager = c.return_member_or_role(guild=interaction.guild, id=guild_setting.bot_manager_id)
-            bot_user = c.return_member_or_role(guild=interaction.guild, id=guild_setting.bot_user_id)
+            bot_manager = c.return_member_or_role(
+                guild=interaction.guild, id=guild_setting.bot_manager_id
+            )
+            bot_user = c.return_member_or_role(
+                guild=interaction.guild, id=guild_setting.bot_user_id
+            )
 
             await interaction.response.send_message(
                 f"{interaction.guild}のbot管理者は{bot_manager.mention}、bot操作者は{bot_user.mention}です",
@@ -731,12 +860,18 @@ class ReactionAggregator(commands.Cog):
             )
 
         else:
-            await interaction.response.send_message(f"{interaction.guild}のbot管理者とbot操作者は登録されていません")
+            await interaction.response.send_message(
+                f"{interaction.guild}のbot管理者とbot操作者は登録されていません"
+            )
 
     @show_manage_role.error
-    async def show_manage_role_error(self, interaction: discord.Interaction, error: Exception):
+    async def show_manage_role_error(
+        self, interaction: discord.Interaction, error: Exception
+    ):
         if isinstance(error, commands.CheckFailure):
-            await interaction.response.send_message("このコマンドを実行する権限がありません", ephemeral=True)
+            await interaction.response.send_message(
+                "このコマンドを実行する権限がありません", ephemeral=True
+            )
         if not isinstance(interaction.channel, discord.abc.Messageable):
             return
         await interaction.channel.send(f"エラーが発生しました。{error}")
@@ -750,7 +885,9 @@ class ReactionAggregator(commands.Cog):
         """
         if reaction.member is None or reaction.member.bot or reaction.guild_id is None:
             return
-        if reaction_data := await self.aggregation_mng.get_aggregation(reaction.message_id):
+        if reaction_data := await self.aggregation_mng.get_aggregation(
+            reaction.message_id
+        ):
             message_id = reaction.message_id
 
             member_role_ids = [role.id for role in reaction.member.roles]
@@ -773,10 +910,14 @@ class ReactionAggregator(commands.Cog):
                     pass
                 else:
                     try:
-                        await message.remove_reaction(str(reaction.emoji), reaction.member)
+                        await message.remove_reaction(
+                            str(reaction.emoji), reaction.member
+                        )
                     except discord.Forbidden:
                         await channel.send("リアクションの除去に失敗しました.")
-                    notify_msg = await channel.send(f"{reaction.member.mention} 権限無しのリアクションは禁止です！")
+                    notify_msg = await channel.send(
+                        f"{reaction.member.mention} 権限無しのリアクションは禁止です！"
+                    )
                     # await self.delete_after(notify_msg)
                     return
 
@@ -799,8 +940,12 @@ class ReactionAggregator(commands.Cog):
                 message = await channel.fetch_message(reaction.message_id)
                 await message.edit(content=message.content + "\n待ちます")
 
-            await self.aggregation_mng.set_value_to_matte(message_id=message_id, val=matte_reactions)
-            await self.aggregation_mng.set_value_to_sum(message_id=message_id, val=other_reactions)
+            await self.aggregation_mng.set_value_to_matte(
+                message_id=message_id, val=matte_reactions
+            )
+            await self.aggregation_mng.set_value_to_sum(
+                message_id=message_id, val=other_reactions
+            )
 
             await self.judge_and_notice(message_id)
 
@@ -814,7 +959,9 @@ class ReactionAggregator(commands.Cog):
         if reaction.guild_id is None:
             return
 
-        if reaction_data := await self.aggregation_mng.get_aggregation(reaction.message_id):
+        if reaction_data := await self.aggregation_mng.get_aggregation(
+            reaction.message_id
+        ):
             message_id = reaction.message_id
             guild = self.bot.get_guild(reaction_data.guild_id)
             channel = self.bot.get_channel(reaction.channel_id)
@@ -843,7 +990,9 @@ class ReactionAggregator(commands.Cog):
                 pass
             elif len(set(reaction_data.ping_id) & set(member_role_ids)) == 0:
                 # bot使用者からのmatteならreturnしない
-                if "matte" in reaction.emoji.name and c.has_bot_user(self.bot.get_guild(reaction.guild_id), remove_usr):
+                if "matte" in reaction.emoji.name and c.has_bot_user(
+                    self.bot.get_guild(reaction.guild_id), remove_usr
+                ):
                     return
 
             # messageについてるリアクションを、matteとそれ以外に分ける
@@ -866,8 +1015,12 @@ class ReactionAggregator(commands.Cog):
                 # message.contentから待ちますを削除する
                 await message.edit(content=message.content.replace("\n待ちます", ""))
 
-            await self.aggregation_mng.set_value_to_matte(message_id=message_id, val=matte_reactions)
-            await self.aggregation_mng.set_value_to_sum(message_id=message_id, val=other_reactions)
+            await self.aggregation_mng.set_value_to_matte(
+                message_id=message_id, val=matte_reactions
+            )
+            await self.aggregation_mng.set_value_to_sum(
+                message_id=message_id, val=other_reactions
+            )
 
             await self.judge_and_notice(message_id)
 
@@ -912,7 +1065,9 @@ class ReactionAggregator(commands.Cog):
                 if elapsed_time.days != reaction.remind:
                     await self.send_remind(reaction, reaction.remind + 1, elapsed_time)
 
-    async def send_remind(self, reaction: ReactionParameter, val: int, elapsed_time: timedelta) -> None:
+    async def send_remind(
+        self, reaction: ReactionParameter, val: int, elapsed_time: timedelta
+    ) -> None:
         """リマインドを送信する関数
 
         Args:
@@ -951,7 +1106,9 @@ class ReactionAggregator(commands.Cog):
             value=f"ID : {reaction.message_id} by : {auth}\nprogress : {reaction_sum}/{reaction_cnt} [link.]({url})",
             inline=False,
         )
-        embed.set_footer(text=f"対象 : {roles_name} 経過時間 : {days} days, {hours} hours {minutes} minutes")
+        embed.set_footer(
+            text=f"対象 : {roles_name} 経過時間 : {days} days, {hours} hours {minutes} minutes"
+        )
         if roles_mention != "None":
             await channel.send(f"{roles_mention}")
         try:
