@@ -1,17 +1,125 @@
 import logging
-import typing
-from datetime import datetime
-from zoneinfo import ZoneInfo
 
 import discord
+from discord import app_commands
 from discord.ext import commands, tasks
-from discord.ext.menus import ListPageSource, MenuPages
+from zoneinfo import ZoneInfo
 
 from .utils.common import CommonUtil
 from .utils.polling_manager import PollingManager, PollingParameter
 from .utils.setting_manager import SettingManager
 
 logger = logging.getLogger("discord")
+polling_mng = PollingManager()
+
+num_emoji_list = [
+    f"{i}\N{VARIATION SELECTOR-16}\N{COMBINING ENCLOSING KEYCAP}" for i in range(10)
+]
+finish = "\N{WHITE HEAVY CHECK MARK}"
+
+
+class NotSameUserError(Exception):
+    """Interactionの実行者とappコマンドの実行者が異なる場合のエラー"""
+
+    pass
+
+
+class Select(discord.ui.RoleSelect):
+    def __init__(self):
+        super().__init__(
+            placeholder="対象を選択してください", min_values=0, max_values=25
+        )
+        # self.aggregation_mng = AggregationManager()
+
+    async def callback(self, interaction: discord.Interaction):
+        if self.view is None:
+            return
+        # select menuを無効にする
+        for item in self.view.children:
+            item.disabled = True
+        await self.view.message.edit(view=self.view)
+
+        now = discord.utils.utcnow()
+        poll_time_stamp = f"<t:{int(now.timestamp())}:f>"
+
+        role_names = [role.name for role in self.values]
+        role_names = ", ".join(role_names)
+
+        content = "\n".join(
+            f"{num_emoji_list[num]} : {option}" for num, option in enumerate(options)
+        )
+
+        embed = discord.Embed(title=f"{question_}", description=content, color=0x37D2C0)
+        embed.set_footer(text=f"対象 : {role_names}")
+        embed.add_field(name="投票開始", value=f"{poll_time_stamp}", inline=False)
+
+        await interaction.response.send_message(
+            embed=embed,
+            allowed_mentions=discord.AllowedMentions(
+                everyone=False, users=False, roles=True, replied_user=False
+            ),
+        )
+
+        msg = await interaction.original_response()
+
+        for num in range(len(options)):
+            await msg.add_reaction(num_emoji_list[num])
+        await msg.add_reaction(finish)
+
+        user_roles_id = [role.id for role in self.values]
+
+        data = PollingParameter(
+            message_id=msg.id,
+            author_id=interaction.user.id,
+            channel_id=interaction.message.channel.id,
+            created_at=now,
+            allow_list=user_roles_id,
+        )
+
+        await polling_mng.register_polling(data)
+
+
+class SelectView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=120)
+        self.add_item(Select())
+
+    async def on_timeout(self):
+        # タイムアウトしたら消す
+        for item in self.children:
+            item.disabled = True  # type: ignore
+        try:
+            await self.message.edit(view=self)  # type: ignore
+        except discord.NotFound:
+            pass
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        # 実行者と選択者が違ったらFalseを返す
+        if interaction.message is None:
+            return False
+
+        if interaction.message.interaction is None:
+            return False
+
+        if interaction.user != interaction.message.interaction.user:
+            raise NotSameUserError("実行者と選択者が違います")
+
+        return True
+
+    async def on_error(
+        self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item
+    ):
+        if isinstance(error, NotSameUserError):
+            await interaction.response.send_message(
+                "実行者と選択者が違います", ephemeral=True
+            )
+            return
+        if not isinstance(interaction.channel, discord.abc.Messageable):
+            return
+        await interaction.channel.send(f"エラーが発生しました。{error}")
+
+    async def wait(self):
+        print("wait")
 
 
 class Polling(commands.Cog):
@@ -19,90 +127,98 @@ class Polling(commands.Cog):
         self.bot = bot
         self.setting_mng = SettingManager()
         self.c = CommonUtil()
-        self.polling_mng = PollingManager()
 
         self.o = "\N{HEAVY LARGE CIRCLE}"
         self.x = "\N{CROSS MARK}"
-        self.num_emoji_list = [f"{i}\N{VARIATION SELECTOR-16}\N{COMBINING ENCLOSING KEYCAP}" for i in range(10)]
-        self.finish = "\N{WHITE HEAVY CHECK MARK}"
 
         self.polling_timer.stop()
         self.polling_timer.start()
+
+    async def setup_hook(self):
+        # self.bot.tree.copy_global_to(guild=MY_GUILD)
+        pass
 
     @commands.Cog.listener()
     async def on_ready(self):
         """on_ready時に発火する関数"""
         await self.setting_mng.create_table()
-        await self.polling_mng.create_table()
+        await polling_mng.create_table()
 
-    @commands.command(description="投票を実施")
+        await self.bot.tree.sync()
+
+    @app_commands.command(name="poll")
+    @app_commands.guild_only()
     async def poll(
         self,
-        ctx: commands.Context,
+        interaction: discord.Interaction,
         question: str,
-        *choices_or_user_role: typing.Union[discord.Member, discord.Role, str],
-    ):
-        """投票を行うコマンド.内容だけ投稿すれば賛成反対の二択に、選択肢も入れればその投票になります.\nユーザーと役職のメンションを入れるとその役職に限定できます.チェックを押すと集計します."""
-        async with ctx.typing():
-            if not await self.c.has_bot_user(guild=ctx.guild, command_user=ctx.author):
-                return
+        option_1: str,
+        option_2: str = None,
+        option_3: str = None,
+        option_4: str = None,
+        option_5: str = None,
+        option_6: str = None,
+        option_7: str = None,
+        option_8: str = None,
+        option_9: str = None,
+        option_10: str = None,
+    ) -> None:
+        """optionで選択肢を追加します.ロールは最後に選択してください."""
 
-            now = discord.utils.utcnow()
-            user_roles_id = []
+        view = SelectView()
+        await interaction.response.send_message("対象を選択してください", view=view)
+        view.message = await interaction.original_response()
 
-            choices = [i for i in choices_or_user_role if isinstance(i, str)]
-            user_roles = [i for i in choices_or_user_role if not isinstance(i, str)]
+        global question_
+        global options
 
-            if len(choices) == 0:
-                embed = discord.Embed(title=f"{question}", color=0x37D2C0)
-                embed.set_footer(text=f"created_at : {now.strftime('%Y/%m/%d %H:%M')} , created_by : {ctx.author}")
-                msg = await ctx.reply(embed=embed)
-                await msg.add_reaction(self.o)
-                await msg.add_reaction(self.x)
-                await msg.add_reaction(self.finish)
+        question_ = question
 
-            else:
-                if len(choices) > 10:
-                    await ctx.reply("選択肢は9個以下にしてください")
-                    return
+        options = []
+        options.append(option_1)
+        if option_2 is not None:
+            options.append(option_2)
+        if option_3 is not None:
+            options.append(option_3)
+        if option_4 is not None:
+            options.append(option_4)
+        if option_5 is not None:
+            options.append(option_5)
+        if option_6 is not None:
+            options.append(option_6)
+        if option_7 is not None:
+            options.append(option_7)
+        if option_8 is not None:
+            options.append(option_8)
+        if option_9 is not None:
+            options.append(option_9)
+        if option_10 is not None:
+            options.append(option_10)
 
-                if len(user_roles) == 0:
-                    user_roles_str = "None"
-                else:
-                    user_roles_str = ",".join([str(user_role) for user_role in user_roles])
-
-                content = "\n".join([f"{self.num_emoji_list[num]} {choice}" for num, choice in enumerate(choices)])
-
-                embed = discord.Embed(title=f"{question}", description=f"{content}", color=0x37D2C0)
-                embed.set_footer(text=f"created_at : {now.strftime('%Y/%m/%d %H:%M')} , 対象 : {user_roles_str}")
-                msg = await ctx.reply(embed=embed)
-
-                for num in range(len(choices)):
-                    await msg.add_reaction(self.num_emoji_list[num])
-                await msg.add_reaction(self.finish)
-
-            user_roles_id = [user_role.id for user_role in user_roles]
-
-            now = discord.utils.utcnow()
-
-            data = PollingParameter(
-                message_id=msg.id,
-                author_id=ctx.author.id,
-                channel_id=ctx.channel.id,
-                created_at=now,
-                allow_list=user_roles_id,
+    @poll.error
+    async def poll_error(self, interaction: discord.Interaction, error: Exception):
+        if isinstance(error, commands.CheckFailure):
+            await interaction.response.send_message(
+                "このコマンドを実行する権限がありません", ephemeral=True
             )
+        if not isinstance(interaction.channel, discord.abc.Messageable):
+            return
 
-            await self.polling_mng.register_polling(data)
+        logger.warning(f"poll error : {error}")
+        await interaction.channel.send(f"エラーが発生しました。{error}")
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, reaction: discord.RawReactionActionEvent):
         if reaction.member is None or reaction.member.bot or reaction.guild_id is None:
             return
-        if polling_data := await self.polling_mng.get_aggregation(reaction.message_id):
+
+        if polling_data := await polling_mng.get_aggregation(reaction.message_id):
             member_role_ids = [role.id for role in reaction.member.roles]
             member_role_ids.append(reaction.user_id)
             channel = self.bot.get_channel(reaction.channel_id)
+
+            now = discord.utils.utcnow()
+            end_time = f"<t:{int(now.timestamp())}:f>"
 
             if len(polling_data.allow_list) == 0:
                 pass
@@ -112,33 +228,46 @@ class Polling(commands.Cog):
                     await msg.remove_reaction(str(reaction.emoji), reaction.member)
                 except discord.Forbidden:
                     await channel.send("リアクションの除去に失敗しました.")
-                notify_msg = await channel.send(f"{reaction.member.mention} 権限無しのリアクションは禁止です！")
+                notify_msg = await channel.send(
+                    f"{reaction.member.mention} 権限無しのリアクションは禁止です！"
+                )
                 # await self.delete_after(notify_msg)
                 return
 
             msg = await channel.fetch_message(reaction.message_id)
             result = ""
 
-            if reaction.emoji.name == self.finish and polling_data.author_id == reaction.member.id:
+            if (
+                reaction.emoji.name == finish
+                and polling_data.author_id == reaction.member.id
+            ):
                 for added_reaction in msg.reactions:
-                    if not added_reaction.emoji == self.finish:
+                    if not added_reaction.emoji == finish:
                         result += f"{added_reaction}:{added_reaction.count - 1}\n"
 
-                embed = msg.embeds[0].add_field(name="結果", value=f"{result}", inline=False)
+                embed = msg.embeds[0].add_field(
+                    name="結果", value=f"{result}", inline=False
+                )
+
+                embed = msg.embeds[0].add_field(
+                    name="終了日時",
+                    value=f"{end_time}",
+                    inline=False,
+                )
                 await msg.edit(embed=embed)
                 # await msg.clear_reactions()
 
-                await self.polling_mng.remove_aggregation(reaction.message_id)
+                await polling_mng.remove_aggregation(reaction.message_id)
 
     @commands.Cog.listener()
-    async def on_message(self, message: discord.Message):
+    async def on_message(self, _: discord.Message):
         if not self.polling_timer.is_running():
             logger.warning("polling_timer is not running!")
             self.polling_timer.start()
 
     async def delete_expired_aggregation(self) -> None:
         """30日前から集計してる投票を削除する関数"""
-        all_aggregation = await self.polling_mng.get_all_aggregation()
+        all_aggregation = await polling_mng.get_all_aggregation()
 
         if all_aggregation is None:
             return
@@ -148,7 +277,7 @@ class Polling(commands.Cog):
         for reaction in all_aggregation:
             elapsed_time = now - reaction.created_at
             if elapsed_time.days >= 30:
-                await self.polling_mng.remove_aggregation(reaction.message_id)
+                await polling_mng.remove_aggregation(reaction.message_id)
                 channel = self.bot.get_channel(reaction.channel_id)
                 if channel is None:
                     continue

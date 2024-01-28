@@ -36,13 +36,6 @@ class MyBot(commands.Bot):
         logger.warning("rebooted")
         await bot.change_presence(activity=discord.Game(name="リアクション集計中"))
 
-    async def on_message(self, message):
-        message_contents = message.content.split("\n")
-
-        for content in message_contents:
-            message.content = content
-            await bot.process_commands(message)
-
 
 if __name__ == "__main__":
     dotenv_path = pathlib.Path(__file__).parents[0] / ".env"
@@ -67,7 +60,9 @@ if __name__ == "__main__":
         backupCount=5,  # Rotate through 5 files
     )
     dt_fmt = "%Y-%m-%d %H:%M:%S"
-    formatter = logging.Formatter("[{asctime}] [{levelname:<8}] {name}: {message}", dt_fmt, style="{")
+    formatter = logging.Formatter(
+        "[{asctime}] [{levelname:<8}] {name}: {message}", dt_fmt, style="{"
+    )
     logger.addHandler(handler)
 
     current_path = pathlib.Path(__file__).parents[0]
@@ -88,4 +83,6 @@ if __name__ == "__main__":
 
         use_sentry(bot, dsn=dsn, integrations=[AioHttpIntegration(), sentry_logging])
 
-    bot.run(token, log_handler=handler, log_formatter=formatter, log_level=logging.WARNING)
+    bot.run(
+        token, log_handler=handler, log_formatter=formatter, log_level=logging.WARNING
+    )

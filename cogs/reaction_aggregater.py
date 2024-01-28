@@ -434,7 +434,7 @@ class ReactionAggregator(commands.Cog):
         await self.bot.tree.sync()
 
     @commands.Cog.listener()
-    async def on_message(self, message: discord.Message):
+    async def on_message(self, _: discord.Message):
         if not self.reaction_reminder.is_running():
             logger.warning("reaction_reminder is not running!")
             self.reaction_reminder.start()
