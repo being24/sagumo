@@ -43,7 +43,7 @@ jobs:
       - name: deploy
         env:
           SSH_USER: ${{ secrets.USER_NAME }}
-          SSH_ADDR: ${{ secrets.LIGHTSAIL_IP_ADDR }}
+          SSH_ADDR: ${{ secrets.SERVER_IP_ADDR }}
         run: |
           ssh-keyscan github.com >> ~/.ssh/known_hosts
           ssh-keygen -y -f ~/.ssh/id_rsa > ~/.ssh/authorized_keys
