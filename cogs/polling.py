@@ -9,6 +9,7 @@ from .utils.common import CommonUtil
 from .utils.polling_manager import PollingManager, PollingParameter
 from .utils.setting_manager import SettingManager
 
+c = CommonUtil()
 logger = logging.getLogger("discord")
 polling_mng = PollingManager()
 
@@ -29,7 +30,6 @@ class Select(discord.ui.RoleSelect):
         super().__init__(
             placeholder="対象を選択してください", min_values=0, max_values=25
         )
-        # self.aggregation_mng = AggregationManager()
 
     async def callback(self, interaction: discord.Interaction):
         if self.view is None:
@@ -38,6 +38,9 @@ class Select(discord.ui.RoleSelect):
         for item in self.view.children:
             item.disabled = True
         await self.view.message.edit(view=self.view)
+
+        if isinstance(interaction.message, discord.Message):
+            await c.delete_after(interaction.message)
 
         now = discord.utils.utcnow()
         poll_time_stamp = f"<t:{int(now.timestamp())}:f>"
@@ -91,6 +94,7 @@ class SelectView(discord.ui.View):
         try:
             await self.message.edit(view=self)  # type: ignore
         except discord.NotFound:
+            print("not found")
             pass
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -126,7 +130,6 @@ class Polling(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.setting_mng = SettingManager()
-        self.c = CommonUtil()
 
         self.o = "\N{HEAVY LARGE CIRCLE}"
         self.x = "\N{CROSS MARK}"
@@ -153,15 +156,15 @@ class Polling(commands.Cog):
         interaction: discord.Interaction,
         question: str,
         option_1: str,
-        option_2: str = None,
-        option_3: str = None,
-        option_4: str = None,
-        option_5: str = None,
-        option_6: str = None,
-        option_7: str = None,
-        option_8: str = None,
-        option_9: str = None,
-        option_10: str = None,
+        option_2: str | None = None,
+        option_3: str | None = None,
+        option_4: str | None = None,
+        option_5: str | None = None,
+        option_6: str | None = None,
+        option_7: str | None = None,
+        option_8: str | None = None,
+        option_9: str | None = None,
+        option_10: str | None = None,
     ) -> None:
         """optionで選択肢を追加します.ロールは最後に選択してください."""
 
