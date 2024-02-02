@@ -50,8 +50,8 @@ if __name__ == "__main__":
         raise FileNotFoundError("Token not found error!")
 
     logger = logging.getLogger("discord")
-    logger.setLevel(logging.WARNING)
-    logging.getLogger("discord.http").setLevel(logging.WARNING)
+    logger.setLevel(logging.INFO)  # Change log level to INFO
+    logging.getLogger("discord.http").setLevel(logging.INFO)  # Change log level to INFO
 
     handler = logging.handlers.RotatingFileHandler(
         filename=logfile_path,
