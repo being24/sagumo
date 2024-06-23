@@ -1,5 +1,3 @@
-version: "3.7"
-
 services:
   sagumo:
     image: "ghcr.io/being24/sagumo:latest"
