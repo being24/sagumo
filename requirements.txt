@@ -6,5 +6,5 @@ discord.py==2.4.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 requests-oauthlib==2.0.0
-sentry-sdk==2.10.0
+sentry-sdk==2.13.0
 SQLAlchemy==2.0.31
