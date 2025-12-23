@@ -24,7 +24,7 @@
 		}
 	},
 	"remoteUser": "root",
-	"postStartCommand": "git config --global --add safe.directory ${containerWorkspaceFolder} && uv synco"
+	"postStartCommand": "git config --global --add safe.directory ${containerWorkspaceFolder} && uv sync"
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
