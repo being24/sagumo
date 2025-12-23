@@ -1,8 +1,7 @@
 import asyncio
-from zoneinfo import ZoneInfo
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Union
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -36,7 +35,7 @@ class ReactionParameter:
     created_at: datetime
     notified_at: datetime | None
     remind: int
-    ping_id: list
+    ping_id: list[int]
 
 
 class ReactionAggregation(Base):
@@ -143,7 +142,7 @@ class AggregationManager:
 
                 session.add(new_aggregation)
 
-    async def get_guild_list(self, guild_id: int) -> Union[List[ReactionParameter], None]:
+    async def get_guild_list(self, guild_id: int) -> list[ReactionParameter] | None:
         """ギルドごとのリアクションのデータオブジェクトをリストで返す関数
 
         Args:
@@ -156,7 +155,9 @@ class AggregationManager:
 
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = select(ReactionAggregation).where(ReactionAggregation.guild_id == guild_id)
+                stmt = select(ReactionAggregation).where(
+                    ReactionAggregation.guild_id == guild_id
+                )
                 result = await session.execute(stmt)
                 result = result.fetchall()
 
@@ -181,7 +182,9 @@ class AggregationManager:
         """
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = select(ReactionAggregation).where(ReactionAggregation.message_id == message_id)
+                stmt = select(ReactionAggregation).where(
+                    ReactionAggregation.message_id == message_id
+                )
                 result = await session.execute(stmt)
                 result = result.fetchone()
                 if result is not None:
@@ -197,10 +200,12 @@ class AggregationManager:
         """
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = delete(ReactionAggregation).where(ReactionAggregation.message_id == message_id)
+                stmt = delete(ReactionAggregation).where(
+                    ReactionAggregation.message_id == message_id
+                )
                 await session.execute(stmt)
 
-    async def get_aggregation(self, message_id: int) -> Union[None, ReactionParameter]:
+    async def get_aggregation(self, message_id: int) -> ReactionParameter | None:
         """メッセージIDから集計中の情報を返す関数
 
         Args:
@@ -211,7 +216,9 @@ class AggregationManager:
         """
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = select(ReactionAggregation).where(ReactionAggregation.message_id == message_id)
+                stmt = select(ReactionAggregation).where(
+                    ReactionAggregation.message_id == message_id
+                )
                 result = await session.execute(stmt)
                 result = result.fetchone()
                 if result is None:
@@ -228,7 +235,11 @@ class AggregationManager:
         """
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = update(ReactionAggregation).where(ReactionAggregation.message_id == message_id).values(sum=val)
+                stmt = (
+                    update(ReactionAggregation)
+                    .where(ReactionAggregation.message_id == message_id)
+                    .values(sum=val)
+                )
                 await session.execute(stmt)
 
     async def set_value_to_matte(self, message_id: int, val: int) -> None:
@@ -240,10 +251,16 @@ class AggregationManager:
         """
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = update(ReactionAggregation).where(ReactionAggregation.message_id == message_id).values(matte=val)
+                stmt = (
+                    update(ReactionAggregation)
+                    .where(ReactionAggregation.message_id == message_id)
+                    .values(matte=val)
+                )
                 await session.execute(stmt)
 
-    async def set_value_to_notified(self, message_id: int, notified_time: datetime) -> None:
+    async def set_value_to_notified(
+        self, message_id: int, notified_time: datetime
+    ) -> None:
         """通知時刻をセットする関数
 
         Args:
@@ -285,11 +302,13 @@ class AggregationManager:
         async with AsyncSession(engine) as session:
             async with session.begin():
                 stmt = (
-                    update(ReactionAggregation).where(ReactionAggregation.message_id == message_id).values(remind=value)
+                    update(ReactionAggregation)
+                    .where(ReactionAggregation.message_id == message_id)
+                    .values(remind=value)
                 )
                 await session.execute(stmt)
 
-    async def get_notified_aggregation(self) -> Union[None, List[ReactionParameter]]:
+    async def get_notified_aggregation(self) -> list[ReactionParameter] | None:
         """通知済みのリアクション集計を取得する関数
 
         Returns:
@@ -297,7 +316,9 @@ class AggregationManager:
         """
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = select(ReactionAggregation).where(ReactionAggregation.notified_at.isnot(None))
+                stmt = select(ReactionAggregation).where(
+                    ReactionAggregation.notified_at.isnot(None)
+                )
                 result = await session.execute(stmt)
                 result = result.fetchall()
                 result = [self.return_dataclass(reaction) for reaction in result]
@@ -307,7 +328,9 @@ class AggregationManager:
         else:
             return result
 
-    async def get_all_not_reminded_aggregation(self) -> Union[None, List[ReactionParameter]]:
+    async def get_all_not_reminded_aggregation(
+        self,
+    ) -> list[ReactionParameter] | None:
         """リマインドされてないリアクション集計をギルドID順で取得する関数
 
         Returns:
@@ -329,7 +352,7 @@ class AggregationManager:
         else:
             return result
 
-    async def get_all_aggregation(self) -> Union[None, List[ReactionParameter]]:
+    async def get_all_aggregation(self) -> list[ReactionParameter] | None:
         """すべてのリアクション集計ギルドID順で取得する関数
 
         Returns:
@@ -337,7 +360,9 @@ class AggregationManager:
         """
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = select(ReactionAggregation).order_by(ReactionAggregation.guild_id)
+                stmt = select(ReactionAggregation).order_by(
+                    ReactionAggregation.guild_id
+                )
                 result = await session.execute(stmt)
                 result = result.fetchall()
                 result = [self.return_dataclass(reaction) for reaction in result]

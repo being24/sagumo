@@ -1,0 +1,24 @@
+[project]
+name = "sagumo"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "aiosqlite>=0.22.0",
+    "demoji>=1.1.0",
+    "discord-ext-menus>=1.1",
+    "discord-py>=2.6.4",
+    "discord-sentry-reporting>=2.0.4",
+    "python-dateutil>=2.9.0.post0",
+    "python-dotenv>=1.2.1",
+    "requests-oauthlib>=2.0.0",
+    "sentry-sdk>=2.48.0",
+    "sqlalchemy>=2.0.45",
+]
+
+[dependency-groups]
+dev = [
+    "pyrefly>=0.46.0",
+    "ruff>=0.14.10",
+]

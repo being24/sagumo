@@ -19,7 +19,9 @@ class CommandErrorHandler(commands.Cog):
         ctx   : Context
         error : Exception"""
 
-        if hasattr(ctx.command, "on_error"):  # ローカルのハンドリングがあるコマンドは除く
+        if hasattr(
+            ctx.command, "on_error"
+        ):  # ローカルのハンドリングがあるコマンドは除く
             return
 
         if isinstance(error, commands.CommandNotFound):
@@ -36,7 +38,9 @@ class CommandErrorHandler(commands.Cog):
 
         elif isinstance(error, commands.NoPrivateMessage):
             try:
-                return await ctx.reply(f"{ctx.command} can not be used in Private Messages.")
+                return await ctx.reply(
+                    f"{ctx.command} can not be used in Private Messages."
+                )
             except discord.HTTPException:
                 print("couldn't send direct message")
 
@@ -50,8 +54,12 @@ class CommandErrorHandler(commands.Cog):
 
         else:
             error = getattr(error, "original", error)
-            print("Ignoring exception in command {}:".format(ctx.command), file=sys.stderr)
-            traceback.print_exception(type(error), error, error.__traceback__, file=sys.stderr)
+            print(
+                "Ignoring exception in command {}:".format(ctx.command), file=sys.stderr
+            )
+            traceback.print_exception(
+                type(error), error, error.__traceback__, file=sys.stderr
+            )
             error_content = f"error content: {error}\nmessage_content: {ctx.message.content}\nmessage_author : {ctx.message.author}\n{ctx.message.jump_url}"
 
             logging.error(error_content, exc_info=True)
@@ -78,8 +86,12 @@ class CommandErrorHandler(commands.Cog):
 
         else:
             error = getattr(error, "original", error)
-            print("Ignoring exception in command {}:".format(ctx.command), file=sys.stderr)
-            traceback.print_exception(type(error), error, error.__traceback__, file=sys.stderr)
+            print(
+                "Ignoring exception in command {}:".format(ctx.command), file=sys.stderr
+            )
+            traceback.print_exception(
+                type(error), error, error.__traceback__, file=sys.stderr
+            )
             error_content = f"error content: {error}\nmessage_content: {ctx.command.name}\nmessage_author : {ctx.author}\nguild: {ctx.interaction.guild}\nchannnel: {ctx.interaction.channel}"
 
             logging.error(error_content, exc_info=True)

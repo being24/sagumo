@@ -23,7 +23,9 @@ class MyBot(commands.Bot):
         for cog in current_path.glob("cogs/*.py"):
             try:
                 await self.load_extension(f"cogs.{cog.stem}")
+                print(f"Loaded: {cog.stem}")
             except Exception:
+                print(f"Failed to load: {cog.stem}")
                 traceback.print_exc()
 
     async def on_ready(self):
@@ -50,8 +52,8 @@ if __name__ == "__main__":
         raise FileNotFoundError("Token not found error!")
 
     logger = logging.getLogger("discord")
-    logger.setLevel(logging.INFO)  # Change log level to INFO
-    logging.getLogger("discord.http").setLevel(logging.INFO)  # Change log level to INFO
+    logger.setLevel(logging.WARNING)
+    logging.getLogger("discord.http").setLevel(logging.WARNING)
 
     handler = logging.handlers.RotatingFileHandler(
         filename=logfile_path,

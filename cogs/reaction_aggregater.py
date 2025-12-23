@@ -10,6 +10,7 @@ from discord.ext.menus import ListPageSource, MenuPages
 from sqlalchemy.sql.elements import Null
 
 from .utils.common import CommonUtil
+from .utils.dm_notification_role_manager import DMNotificationRoleManager
 from .utils.reaction_aggregation_manager import AggregationManager, ReactionParameter
 from .utils.setting_manager import SettingManager
 
@@ -105,11 +106,12 @@ class ReactionList(ListPageSource):
 
 
 class Select(discord.ui.RoleSelect):
-    def __init__(self):
+    def __init__(self, cog):
         super().__init__(
             placeholder="対象を選択してください", min_values=0, max_values=25
         )
         self.aggregation_mng = AggregationManager()
+        self.cog = cog
 
     async def callback(self, interaction: discord.Interaction):
         if self.view is None:
@@ -124,11 +126,11 @@ class Select(discord.ui.RoleSelect):
 
         target_value = target_value_dict.pop(self.custom_id)
         if target_value is None:
-            logger.warn("target_value is None")
+            logger.warning("target_value is None")
             return
 
         if interaction.guild is None:
-            logger.warn("guild is None")
+            logger.warning("guild is None")
             return
 
         # self.valuesから自分自身を除いたidのリストを作成
@@ -162,15 +164,15 @@ class Select(discord.ui.RoleSelect):
         now = discord.utils.utcnow()
 
         if interaction.guild is None:
-            logger.warn("interaction.guild is None")
+            logger.warning("interaction.guild is None")
             return
 
         if interaction.channel is None:
-            logger.warn("interaction.channel is None")
+            logger.warning("interaction.channel is None")
             return
 
         if self.view is None:
-            logger.warn("self.view is None")
+            logger.warning("self.view is None")
             return
 
         await self.aggregation_mng.register_aggregation(
@@ -183,14 +185,24 @@ class Select(discord.ui.RoleSelect):
             created_at=now,
             ping_id=insert_roles_str,
         )
+
+        # DM送信処理
+        if self.cog:
+            await self.cog.send_dm_notifications(
+                guild=interaction.guild,
+                channel=interaction.channel,
+                message_id=msg.id,
+                target_value=target_value,
+            )
 
 
 class PersonalSelect(discord.ui.UserSelect):
-    def __init__(self):
+    def __init__(self, cog):
         super().__init__(
             placeholder="対象を選択してください", min_values=0, max_values=25
         )
         self.aggregation_mng = AggregationManager()
+        self.cog = cog
 
     async def callback(self, interaction: discord.Interaction):
         if self.view is None:
@@ -205,11 +217,11 @@ class PersonalSelect(discord.ui.UserSelect):
 
         target_value = target_value_dict.pop(self.custom_id)
         if target_value is None:
-            logger.warn("target_value is None")
+            logger.warning("target_value is None")
             return
 
         if interaction.guild is None:
-            logger.warn("guild is None")
+            logger.warning("guild is None")
             return
 
         # self.valuesから自分自身を除いたidのリストを作成
@@ -243,15 +255,15 @@ class PersonalSelect(discord.ui.UserSelect):
         now = discord.utils.utcnow()
 
         if interaction.guild is None:
-            logger.warn("interaction.guild is None")
+            logger.warning("interaction.guild is None")
             return
 
         if interaction.channel is None:
-            logger.warn("interaction.channel is None")
+            logger.warning("interaction.channel is None")
             return
 
         if self.view is None:
-            logger.warn("self.view is None")
+            logger.warning("self.view is None")
             return
 
         await self.aggregation_mng.register_aggregation(
@@ -264,12 +276,20 @@ class PersonalSelect(discord.ui.UserSelect):
             created_at=now,
             ping_id=insert_roles_str,
         )
+        # DM送信処理
+        if self.cog:
+            await self.cog.send_dm_notifications(
+                guild=interaction.guild,
+                channel=interaction.channel,
+                message_id=msg.id,
+                target_value=target_value,
+            )
 
 
 class SelectView(discord.ui.View):
-    def __init__(self):
+    def __init__(self, cog):
         super().__init__(timeout=120)
-        self.add_item(Select())
+        self.add_item(Select(cog))
 
     async def on_timeout(self):
         # タイムアウトしたら消す
@@ -285,10 +305,10 @@ class SelectView(discord.ui.View):
         if interaction.message is None:
             return False
 
-        if interaction.message.interaction is None:
+        if interaction.message.interaction_metadata is None:
             return False
 
-        if interaction.user != interaction.message.interaction.user:
+        if interaction.user != interaction.message.interaction_metadata.user:
             raise NotSameUserError("実行者と選択者が違います")
 
         return True
@@ -310,9 +330,9 @@ class SelectView(discord.ui.View):
 
 
 class PersonalSelectView(discord.ui.View):
-    def __init__(self):
+    def __init__(self, cog):
         super().__init__(timeout=120)
-        self.add_item(PersonalSelect())
+        self.add_item(PersonalSelect(cog))
 
     async def on_timeout(self):
         # タイムアウトしたら消す
@@ -382,6 +402,7 @@ class ReactionAggregator(commands.Cog):
 
         self.setting_mng = SettingManager()
         self.aggregation_mng = AggregationManager()
+        self.dm_notification_mng = DMNotificationRoleManager()
 
         self.reaction_reminder.stop()
         self.reaction_reminder.start()
@@ -430,6 +451,7 @@ class ReactionAggregator(commands.Cog):
         """on_ready時に発火する関数"""
         await self.aggregation_mng.create_table()
         await self.setting_mng.create_table()
+        await self.dm_notification_mng.create_table()
 
         await self.bot.tree.sync()
 
@@ -438,6 +460,71 @@ class ReactionAggregator(commands.Cog):
         if not self.reaction_reminder.is_running():
             logger.warning("reaction_reminder is not running!")
             self.reaction_reminder.start()
+
+    async def send_dm_notifications(
+        self,
+        guild: discord.Guild,
+        channel: discord.abc.GuildChannel | discord.abc.PrivateChannel | None,
+        message_id: int,
+        target_value: int,
+    ) -> None:
+        """リアクション集計開始時にDM通知を送信する関数
+
+        Args:
+            guild: discord.Guild オブジェクト
+            channel: チャンネルオブジェクト
+            message_id: メッセージID
+            target_value: 目標値
+        """
+        enabled_role_ids = (
+            await self.dm_notification_mng.get_enabled_dm_notification_roles(guild.id)
+        )
+        if not enabled_role_ids:
+            return
+
+        channel_id = getattr(channel, "id", None)
+        if channel_id is None:
+            return
+
+        url = f"https://discord.com/channels/{guild.id}/{channel_id}/{message_id}"
+        channel_name = (
+            channel.name
+            if isinstance(channel, (discord.TextChannel, discord.Thread))
+            else "不明"
+        )
+
+        sent_users = set()
+        for role_id in enabled_role_ids:
+            role = guild.get_role(role_id)
+            if role is None:
+                continue
+
+            for member in role.members:
+                if member.bot or member.id in sent_users:
+                    continue
+
+                sent_users.add(member.id)
+                try:
+                    embed = discord.Embed(
+                        title="リアクション集計が開始されました",
+                        color=0x0088FF,
+                    )
+                    embed.add_field(name="サーバー", value=guild.name, inline=False)
+                    embed.add_field(name="チャンネル", value=channel_name, inline=False)
+                    embed.add_field(
+                        name="目標数", value=str(target_value), inline=False
+                    )
+                    embed.add_field(
+                        name="リンク", value=f"[ここをクリック]({url})", inline=False
+                    )
+
+                    await member.send(embed=embed)
+                except discord.Forbidden:
+                    logger.warning(f"DM送信失敗: {member.name} (権限不足)")
+                except Exception as e:
+                    logger.warning(f"DM送信失敗: {member.name} ({e})")
+                finally:
+                    await asyncio.sleep(0.1)
 
     async def judge_and_notice(self, message_id: int):
         reaction_data = await self.aggregation_mng.get_aggregation(message_id)
@@ -504,7 +591,7 @@ class ReactionAggregator(commands.Cog):
             try:
                 await channel.send(f"{author_mention}", embed=embed)
             except discord.Forbidden:
-                logger.warn(
+                logger.warning(
                     f"send message is forbidden. channel_id: {channel}, guild_id: {guild}"
                 )
                 return
@@ -537,7 +624,7 @@ class ReactionAggregator(commands.Cog):
         if target_value <= 0:
             await interaction.response.send_message("引数を正しく入力してください")
             return
-        view = SelectView()
+        view = SelectView(self)
         await interaction.response.send_message("対象を選択してください", view=view)
 
         view.message = await interaction.original_response()  # type: ignore
@@ -568,7 +655,7 @@ class ReactionAggregator(commands.Cog):
         if target_value <= 0:
             await interaction.response.send_message("引数を正しく入力してください")
             return
-        view = PersonalSelectView()
+        view = PersonalSelectView(self)
         await interaction.response.send_message("対象を選択してください", view=view)
 
         view.message = await interaction.original_response()  # type: ignore
@@ -598,7 +685,7 @@ class ReactionAggregator(commands.Cog):
             all (bool, optional): 終了済みの集計も表示するかどうか. Defaults to False.
         """
         if interaction.guild is None:
-            logger.warn("guild is None @list_reaction")
+            logger.warning("guild is None @list_reaction")
             return
 
         reaction_list_of_guild = await self.aggregation_mng.get_guild_list(
@@ -638,7 +725,7 @@ class ReactionAggregator(commands.Cog):
         try:
             await interaction.channel.send(f"エラーが発生しました。{error}")
         except discord.Forbidden:
-            logger.warn(
+            logger.warning(
                 f"send message is forbidden. channel_id: {interaction.channel}, guild_id: {interaction.guild}"
             )
 
@@ -665,7 +752,7 @@ class ReactionAggregator(commands.Cog):
 
         if await self.aggregation_mng.is_exist(message_id):
             if interaction.channel is None:
-                logger.warn("interaction.channel is None @remove_reaction")
+                logger.warning("interaction.channel is None @remove_reaction")
                 return
 
             view = Confirm()
@@ -740,7 +827,7 @@ class ReactionAggregator(commands.Cog):
         msg = await interaction.original_response()
 
         if interaction.guild is None:
-            logger.warn("guild is None @add_role")
+            logger.warning("guild is None @add_role")
             return
 
         for member in target_members:
@@ -780,7 +867,7 @@ class ReactionAggregator(commands.Cog):
         await interaction.channel.send(f"エラーが発生しました。{error}")
 
     @app_commands.command(name="register_manage_role")
-    @app_commands.default_permissions(manage_guild=True)
+    @app_commands.default_permissions()
     @app_commands.guild_only()
     async def register_manage_role(
         self,
@@ -797,7 +884,7 @@ class ReactionAggregator(commands.Cog):
         """
 
         if interaction.guild is None:
-            logger.warn("guild is None @sagumo_initialization")
+            logger.warning("guild is None @sagumo_initialization")
             return
 
         if await self.setting_mng.is_exist(interaction.guild.id):
@@ -834,7 +921,7 @@ class ReactionAggregator(commands.Cog):
         await interaction.channel.send(f"エラーが発生しました。{error}")
 
     @app_commands.command(name="show_manage_role")
-    @app_commands.default_permissions(manage_guild=True)
+    @app_commands.default_permissions()
     @app_commands.guild_only()
     async def show_manage_role(self, interaction: discord.Interaction):
         """bot管理者とbot使用者を表示するコマンド
@@ -843,7 +930,7 @@ class ReactionAggregator(commands.Cog):
             interaction (discord.Interaction): interaction
         """
         if interaction.guild is None:
-            logger.warn("guild is None @sagumo_initialization")
+            logger.warning("guild is None @sagumo_initialization")
             return
 
         if guild_setting := await self.setting_mng.get_guild(interaction.guild.id):
@@ -970,17 +1057,17 @@ class ReactionAggregator(commands.Cog):
             message = await channel.fetch_message(message_id)
 
             if guild is None:
-                logger.warn("guild is None @on_raw_reaction_remove")
+                logger.warning("guild is None @on_raw_reaction_remove")
                 return
 
             remove_usr = guild.get_member(reaction.user_id)
             if remove_usr is None:
-                logger.warn("remove_usr is None @on_raw_reaction_remove")
+                logger.warning("remove_usr is None @on_raw_reaction_remove")
                 return
 
             channel = self.bot.get_channel(reaction.channel_id)
             if not isinstance(channel, discord.abc.Messageable):
-                logger.warn("channel is not TextChannel @on_raw_reaction_remove")
+                logger.warning("channel is not TextChannel @on_raw_reaction_remove")
                 return
 
             member_role_ids = [role.id for role in remove_usr.roles]
@@ -1075,14 +1162,14 @@ class ReactionAggregator(commands.Cog):
         """
         channel = self.bot.get_channel(reaction.channel_id)
         if not isinstance(channel, discord.abc.Messageable):
-            logger.warn(
+            logger.warning(
                 f"channel is not TextChannel @send_remind guild_id={reaction.guild_id} channel_id={reaction.channel_id} message_id={reaction.message_id}"
             )
             return
         url = c.get_msg_url_from_reaction(reaction)
         guild = self.bot.get_guild(reaction.guild_id)
         if guild is None:
-            logger.warn("guild is None @send_remind")
+            logger.warning("guild is None @send_remind")
             return
 
         roles = [c.return_member_or_role(guild, id) for id in reaction.ping_id]
@@ -1114,7 +1201,7 @@ class ReactionAggregator(commands.Cog):
         try:
             await channel.send(embed=embed)
         except discord.Forbidden:
-            logger.warn(
+            logger.warning(
                 f"Forbidden @send_remind guild_id : {reaction.guild_id} channel_id : {reaction.channel_id} message_id : {reaction.message_id}"
             )
             return
