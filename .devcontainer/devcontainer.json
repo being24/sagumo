@@ -18,12 +18,13 @@
 				"ms-python.vscode-python-envs",
 				"charliermarsh.ruff",
 				"redhat.vscode-yaml",
-				"mhutchie.git-graph"
+				"mhutchie.git-graph",
+				"meta.pyrefly"
 			]
 		}
 	},
 	"remoteUser": "root",
-	"postStartCommand": "git config --global --add safe.directory ${containerWorkspaceFolder}"
+	"postStartCommand": "git config --global --add safe.directory ${containerWorkspaceFolder} && uv synco"
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
