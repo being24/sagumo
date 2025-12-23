@@ -34,7 +34,7 @@ class Admin(commands.Cog, name="管理用コマンド群"):
         """管理者のみがコマンドを実行できるようにするチェック"""
         return ctx.guild is not None and await self.bot.is_owner(ctx.author)
 
-    def get_data_files(self) -> List[pathlib.Path]:
+    def get_data_files(self) -> list[pathlib.Path]:
         """データベースファイルのリストを取得する"""
         return list(self.master_path.glob("data/*.sqlite3"))
 
