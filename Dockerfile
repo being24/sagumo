@@ -7,10 +7,10 @@ ENV TZ='Asia/Tokyo'
 
 # uv environment variables
 ENV UV_LINK_MODE=copy
-ENV UV_PROJECT_ENVIRONMENT=/usr/src/${BOT_NAME}/.venv
+ENV UV_PROJECT_ENVIRONMENT=/workspaces/${BOT_NAME}/.venv
 ENV UV_SYSTEM_PYTHON=1
 
-WORKDIR /usr/src/${BOT_NAME}/
+WORKDIR /workspaces/${BOT_NAME}/
 COPY ./ ./
 
 RUN apt update && \
