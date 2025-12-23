@@ -1,5 +1,5 @@
 project-includes = ["main.py", "cogs"]
-search-path = ["cogs"]
+search-path = ["cogs", "cogs/utils"]
 
 python-platform = "linux"
-python-interpreter-path = "/usr/src/sagumo/.venv/bin/python3"
+python-interpreter-path = "/workspaces/sagumo/.venv/bin/python3"
