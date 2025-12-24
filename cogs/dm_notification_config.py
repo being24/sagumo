@@ -50,18 +50,25 @@ class DMNotificationRoleToggleButton(discord.ui.Button):
 
 
 class DMNotificationConfigView(discord.ui.View):
-    def __init__(self, guild_id: int, roles_data: list[tuple[discord.Role, bool]]):
-        super().__init__(timeout=300)
+    def __init__(
+        self,
+        guild_id: int,
+        roles_data: list[tuple[discord.Role, bool]],
+        message: discord.Message | None = None,
+    ):
+        super().__init__(timeout=60)
         self.guild_id = guild_id
+        self.message = message
 
         for role, is_enabled in roles_data:
             button = DMNotificationRoleToggleButton(role, is_enabled, guild_id)
             self.add_item(button)
 
     async def on_timeout(self):
-        for item in self.children:
-            if isinstance(item, discord.ui.Button):
-                item.disabled = True
+        if self.message:
+            await self.message.edit(
+                content="DM通知対象ロール設定\n タイムアウトしました", view=None
+            )
 
 
 class DMNotificationConfig(commands.Cog):
@@ -123,6 +130,8 @@ class DMNotificationConfig(commands.Cog):
             "DM通知対象ロール設定\n緑: OFF (通知しない), 赤: ON (通知する)\nボタンを押して切り替え",
             view=view,
         )
+        message = await interaction.original_response()
+        view.message = message
 
     @dm_notification_config.error
     async def dm_notification_config_error(
