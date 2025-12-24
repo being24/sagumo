@@ -86,11 +86,13 @@ class DMNotificationConfig(commands.Cog):
             return
 
         guild = interaction.guild
-        roles = sorted(
-            [r for r in guild.roles[1:] if len(r.members) < 30],
-            key=lambda r: len(r.members),
-            reverse=True,
-        )[:7]
+        roles = [
+            r
+            for r in guild.roles[1:]
+            if len(r.members) < 30
+            and "サイトメンバ" not in r.name
+            and "bot" not in r.name.lower()
+        ][:10]
 
         if not roles:
             await interaction.response.send_message(
