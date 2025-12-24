@@ -12,6 +12,10 @@ c = CommonUtil()
 logger = logging.getLogger("discord")
 
 
+async def app_has_bot_user(interaction: discord.Interaction) -> bool:
+    return await c.has_bot_user(interaction.guild, interaction.user)
+
+
 class DMNotificationRoleToggleButton(discord.ui.Button):
     def __init__(self, role: discord.Role, is_enabled: bool, guild_id: int):
         self.role = role
@@ -82,7 +86,7 @@ class DMNotificationConfig(commands.Cog):
         pass
 
     @app_commands.command(name="dm_notification_config")
-    @app_commands.default_permissions()
+    @app_commands.check(app_has_bot_user)
     @app_commands.guild_only()
     async def dm_notification_config(self, interaction: discord.Interaction) -> None:
         """DM通知対象ロールを設定するコマンド"""
