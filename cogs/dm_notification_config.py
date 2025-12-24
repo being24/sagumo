@@ -88,10 +88,11 @@ class DMNotificationConfig(commands.Cog):
         guild = interaction.guild
         roles = [
             r
-            for r in guild.roles[1:]
+            for r in reversed(guild.roles)
             if len(r.members) < 30
             and "サイトメンバ" not in r.name
             and "bot" not in r.name.lower()
+            and "@everyone" not in r.name
         ][:10]
 
         if not roles:
