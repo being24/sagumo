@@ -2,8 +2,8 @@ services:
   sagumo:
     image: "ghcr.io/being24/sagumo:latest"
     volumes:
-      - ./data:/usr/src/sagumo/data
-      - ./log:/usr/src/sagumo/log
+      - ./data:/workspaces/sagumo/data
+      - ./log:/workspaces/sagumo/log
     env_file:
       - ./.env
     restart: always
