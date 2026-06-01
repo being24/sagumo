@@ -178,7 +178,9 @@ class InactiveManager:
         Returns:
             bool: 対象であればTrue
         """
-        stmt = select(InactiveDetectorDB.user_id).where(InactiveDetectorDB.user_id == member_id)
+        stmt = select(InactiveDetectorDB.user_id).where(
+            InactiveDetectorDB.user_id == member_id
+        )
         async with AsyncSession(engine) as session:
             async with session.begin():
                 result = await session.execute(stmt)
@@ -244,17 +246,19 @@ class InactiveManager:
         """
         now = datetime.utcnow()
         month_ago = now - relativedelta(months=month)
-        stmt = select(InactiveDetectorDB.user_id).where(InactiveDetectorDB.notified is False)
+        stmt = select(InactiveDetectorDB.user_id).where(
+            InactiveDetectorDB.notified.is_(False),
+            or_(
+                InactiveDetectorDB.last_posted < month_ago,
+                InactiveDetectorDB.last_react < month_ago,
+            ),
+        )
 
         async with AsyncSession(engine) as session:
             async with session.begin():
                 result = await session.execute(stmt)
                 result = result.fetchall()
                 result = [member.user_id for member in result]
-
-        #      .where(InactiveDetectorDB.notified == False)
-        #     .filter(or_(InactiveDetectorDB.last_posted < month_ago, InactiveDetectorDB.last_react < month_ago))
-        # )
 
         if len(result) == 0:
             return None
