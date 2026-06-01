@@ -32,11 +32,12 @@ class Select(discord.ui.RoleSelect):
         )
 
     async def callback(self, interaction: discord.Interaction):
-        if self.view is None:
+        if not isinstance(self.view, SelectView) or self.view.message is None:
             return
         # select menuを無効にする
         for item in self.view.children:
-            item.disabled = True
+            if isinstance(item, (discord.ui.Button, discord.ui.Select)):
+                item.disabled = True
         await self.view.message.edit(view=self.view)
 
         if isinstance(interaction.message, discord.Message):
@@ -49,10 +50,13 @@ class Select(discord.ui.RoleSelect):
         role_names = ", ".join(role_names)
 
         content = "\n".join(
-            f"{num_emoji_list[num]} : {option}" for num, option in enumerate(options)
+            f"{num_emoji_list[num]} : {option}"
+            for num, option in enumerate(self.view.options)
         )
 
-        embed = discord.Embed(title=f"{question_}", description=content, color=0x37D2C0)
+        embed = discord.Embed(
+            title=self.view.question, description=content, color=0x37D2C0
+        )
         embed.set_footer(text=f"対象 : {role_names}")
         embed.add_field(name="投票開始", value=f"{poll_time_stamp}", inline=False)
 
@@ -65,7 +69,7 @@ class Select(discord.ui.RoleSelect):
 
         msg = await interaction.original_response()
 
-        for num in range(len(options)):
+        for num in range(len(self.view.options)):
             await msg.add_reaction(num_emoji_list[num])
         await msg.add_reaction(finish)
 
@@ -74,7 +78,7 @@ class Select(discord.ui.RoleSelect):
         data = PollingParameter(
             message_id=msg.id,
             author_id=interaction.user.id,
-            channel_id=interaction.message.channel.id,
+            channel_id=msg.channel.id,
             created_at=now,
             allow_list=user_roles_id,
         )
@@ -83,16 +87,22 @@ class Select(discord.ui.RoleSelect):
 
 
 class SelectView(discord.ui.View):
-    def __init__(self):
+    def __init__(self, question: str, options: list[str]):
         super().__init__(timeout=120)
+        self.question = question
+        self.options = options
+        self.message: discord.InteractionMessage | None = None
         self.add_item(Select())
 
     async def on_timeout(self):
         # タイムアウトしたら消す
         for item in self.children:
-            item.disabled = True  # type: ignore
+            if isinstance(item, (discord.ui.Button, discord.ui.Select)):
+                item.disabled = True
+        if self.message is None:
+            return
         try:
-            await self.message.edit(view=self)  # type: ignore
+            await self.message.edit(view=self)
         except discord.NotFound:
             print("not found")
             pass
@@ -121,9 +131,6 @@ class SelectView(discord.ui.View):
         if not isinstance(interaction.channel, discord.abc.Messageable):
             return
         await interaction.channel.send(f"エラーが発生しました。{error}")
-
-    async def wait(self):
-        print("wait")
 
 
 class Polling(commands.Cog):
@@ -168,35 +175,25 @@ class Polling(commands.Cog):
     ) -> None:
         """optionで選択肢を追加します.ロールは最後に選択してください."""
 
-        view = SelectView()
+        options = [
+            option
+            for option in (
+                option_1,
+                option_2,
+                option_3,
+                option_4,
+                option_5,
+                option_6,
+                option_7,
+                option_8,
+                option_9,
+                option_10,
+            )
+            if option is not None
+        ]
+        view = SelectView(question, options)
         await interaction.response.send_message("対象を選択してください", view=view)
         view.message = await interaction.original_response()
-
-        global question_
-        global options
-
-        question_ = question
-
-        options = []
-        options.append(option_1)
-        if option_2 is not None:
-            options.append(option_2)
-        if option_3 is not None:
-            options.append(option_3)
-        if option_4 is not None:
-            options.append(option_4)
-        if option_5 is not None:
-            options.append(option_5)
-        if option_6 is not None:
-            options.append(option_6)
-        if option_7 is not None:
-            options.append(option_7)
-        if option_8 is not None:
-            options.append(option_8)
-        if option_9 is not None:
-            options.append(option_9)
-        if option_10 is not None:
-            options.append(option_10)
 
     @poll.error
     async def poll_error(self, interaction: discord.Interaction, error: Exception):
@@ -231,10 +228,9 @@ class Polling(commands.Cog):
                     await msg.remove_reaction(str(reaction.emoji), reaction.member)
                 except discord.Forbidden:
                     await channel.send("リアクションの除去に失敗しました.")
-                notify_msg = await channel.send(
+                await channel.send(
                     f"{reaction.member.mention} 権限無しのリアクションは禁止です！"
                 )
-                # await self.delete_after(notify_msg)
                 return
 
             msg = await channel.fetch_message(reaction.message_id)
@@ -304,4 +300,5 @@ class Polling(commands.Cog):
 
 
 async def setup(bot):
+    await polling_mng.create_table()
     await bot.add_cog(Polling(bot))

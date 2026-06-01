@@ -1,9 +1,8 @@
 import logging
 
 import discord
-from discord.ext import commands
 
-from cogs.utils.reaction_aggregation_manager import ReactionParameter
+from .reaction_aggregation_manager import ReactionParameter
 
 from .setting_manager import SettingManager
 
@@ -13,7 +12,9 @@ class CommonUtil:
     def __init__(self):
         self.setting_mng = SettingManager()
 
-    async def is_bot_user(self, guild: discord.Guild, command_user: discord.Member) -> bool:
+    async def is_bot_user(
+        self, guild: discord.Guild, command_user: discord.Member
+    ) -> bool:
         """そのサーバーのBOT_user役職を持っているか判定する関数
 
         Args:
@@ -32,12 +33,16 @@ class CommonUtil:
         bot_user_role = guild.get_role(guild_db.bot_user_id)
         bot_manager_role = guild.get_role(guild_db.bot_manager_id)
 
-        if any([role in command_user.roles for role in [bot_manager_role, bot_user_role]]):
+        if any(
+            [role in command_user.roles for role in [bot_manager_role, bot_user_role]]
+        ):
             return True
         else:
             return False
 
-    async def is_bot_manager(self, guild: discord.Guild, command_user: discord.Member) -> bool:
+    async def is_bot_manager(
+        self, guild: discord.Guild, command_user: discord.Member
+    ) -> bool:
         """そのサーバーのBOT_manager役職を持っているか判定する関数
 
         Args:
@@ -57,7 +62,9 @@ class CommonUtil:
             return False
 
     @staticmethod
-    async def delete_after(msg: discord.Message | discord.InteractionMessage, second: int = 5):
+    async def delete_after(
+        msg: discord.Message | discord.InteractionMessage, second: int = 5
+    ):
         """渡されたメッセージを指定秒数後に削除する関数
 
         Args:
@@ -89,7 +96,20 @@ class CommonUtil:
         return url
 
     @staticmethod
-    def return_member_or_role(guild: discord.Guild, id: int) -> discord.Role | discord.Member:
+    def get_member_or_role(
+        guild: discord.Guild, id: int
+    ) -> discord.Role | discord.Member | None:
+        """メンバーか役職オブジェクトを返す。存在しない場合はNoneを返す。"""
+        user_or_role = guild.get_role(id)
+        if user_or_role is None:
+            user_or_role = guild.get_member(id)
+
+        return user_or_role
+
+    @staticmethod
+    def return_member_or_role(
+        guild: discord.Guild, id: int
+    ) -> discord.Role | discord.Member:
         """メンバーか役職オブジェクトを返す関数
 
         Args:
@@ -99,16 +119,16 @@ class CommonUtil:
         Returns:
             typing.Union[discord.Member, discord.Role]: discord.Memberかdiscord.Role
         """
-        user_or_role = guild.get_role(id)
-        if user_or_role is None:
-            user_or_role = guild.get_member(id)
+        user_or_role = CommonUtil.get_member_or_role(guild, id)
 
         if user_or_role is None:
             raise ValueError(f"IDが不正です。ID:{id}")
 
         return user_or_role
 
-    async def has_bot_user(self, guild: discord.Guild | None, command_user: discord.Member | discord.User) -> bool:
+    async def has_bot_user(
+        self, guild: discord.Guild | None, command_user: discord.Member | discord.User
+    ) -> bool:
         """bot_userかどうか判定する関数
 
         Args:
@@ -130,7 +150,9 @@ class CommonUtil:
         else:
             return True
 
-    async def has_bot_manager(self, guild: discord.Guild | None, command_user: discord.Member | discord.User) -> bool:
+    async def has_bot_manager(
+        self, guild: discord.Guild | None, command_user: discord.Member | discord.User
+    ) -> bool:
         """bot_managerかどうか判定する関数
 
         Args:

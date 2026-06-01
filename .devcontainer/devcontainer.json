@@ -24,8 +24,8 @@
 		}
 	},
 	"remoteUser": "root",
-	"postStartCommand": "git config --global --add safe.directory ${containerWorkspaceFolder} && uv sync",
-	"workspaceFolder": "/workspaces/sagumo"
+	"postStartCommand": "git config --global --add safe.directory ${containerWorkspaceFolder} && uv sync && cd ~ && git clone https://github.com/being24/.codex.git",
+	"workspaceFolder": "/workspaces/sagumo",
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.

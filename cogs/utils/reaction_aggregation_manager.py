@@ -4,11 +4,11 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import delete, select, update
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.schema import Column
 from sqlalchemy.sql.elements import Null
-from sqlalchemy.sql.sqltypes import BOOLEAN, DATETIME
+from sqlalchemy.sql.sqltypes import DATETIME
 from sqlalchemy.types import VARCHAR, BigInteger, Integer
 
 try:
@@ -34,7 +34,7 @@ class ReactionParameter:
     author_id: int
     created_at: datetime
     notified_at: datetime | None
-    remind: int
+    remind: int | None
     ping_id: list[int]
 
 
@@ -226,6 +226,17 @@ class AggregationManager:
                 else:
                     return self.return_dataclass(result)
 
+    async def set_value_to_ping_id(self, message_id: int, ping_id: list[int]) -> None:
+        """メンション対象のIDを更新する。"""
+        async with AsyncSession(engine) as session:
+            async with session.begin():
+                stmt = (
+                    update(ReactionAggregation)
+                    .where(ReactionAggregation.message_id == message_id)
+                    .values(ping_id=",".join([str(id) for id in ping_id]))
+                )
+                await session.execute(stmt)
+
     async def set_value_to_sum(self, message_id: int, val: int) -> None:
         """sumカラムに値をセットする関数
 
@@ -377,8 +388,9 @@ if __name__ == "__main__":
     reaction_mng = AggregationManager()
     result = asyncio.run(reaction_mng.get_all_not_reminded_aggregation())
 
-    for i in result:
-        print(i)
+    if result is not None:
+        for i in result:
+            print(i)
 
     # asyncio.run(guild_mng.register_setting())
 

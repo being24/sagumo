@@ -57,9 +57,8 @@ class CommandErrorHandler(commands.Cog):
             print(
                 "Ignoring exception in command {}:".format(ctx.command), file=sys.stderr
             )
-            traceback.print_exception(
-                type(error), error, error.__traceback__, file=sys.stderr
-            )
+            if isinstance(error, BaseException):
+                traceback.print_exception(error, file=sys.stderr)
             error_content = f"error content: {error}\nmessage_content: {ctx.message.content}\nmessage_author : {ctx.message.author}\n{ctx.message.jump_url}"
 
             logging.error(error_content, exc_info=True)
@@ -80,7 +79,9 @@ class CommandErrorHandler(commands.Cog):
             )
             return
 
-        elif isinstance(error.original, commands.errors.MessageNotFound):
+        elif isinstance(
+            getattr(error, "original", error), commands.errors.MessageNotFound
+        ):
             await ctx.respond("message not found.", delete_after=5)
             return
 
@@ -89,9 +90,8 @@ class CommandErrorHandler(commands.Cog):
             print(
                 "Ignoring exception in command {}:".format(ctx.command), file=sys.stderr
             )
-            traceback.print_exception(
-                type(error), error, error.__traceback__, file=sys.stderr
-            )
+            if isinstance(error, BaseException):
+                traceback.print_exception(error, file=sys.stderr)
             error_content = f"error content: {error}\nmessage_content: {ctx.command.name}\nmessage_author : {ctx.author}\nguild: {ctx.interaction.guild}\nchannnel: {ctx.interaction.channel}"
 
             logging.error(error_content, exc_info=True)
