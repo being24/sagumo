@@ -300,4 +300,5 @@ class Polling(commands.Cog):
 
 
 async def setup(bot):
+    await polling_mng.create_table()
     await bot.add_cog(Polling(bot))
