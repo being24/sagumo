@@ -1,9 +1,9 @@
 import asyncio
 from dataclasses import dataclass
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.schema import Column
 from sqlalchemy.types import BigInteger
@@ -24,7 +24,7 @@ class GuildSetting:
 
 
 class GuildSettingDB(Base):
-    __tablename__ = 'setting'
+    __tablename__ = "setting"
 
     guild_id = Column(BigInteger, primary_key=True)  # サーバーID
     bot_manager_id = Column(BigInteger, default=0)  # ボット管理者のロールID
@@ -33,10 +33,9 @@ class GuildSettingDB(Base):
     # メモ：dataclassにで扱うべし
 
 
-class SettingManager():
+class SettingManager:
     async def create_table(self) -> None:
-        """テーブルを作成する関数
-        """
+        """テーブルを作成する関数"""
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
             try:
@@ -50,7 +49,9 @@ class SettingManager():
                 new_setting = GuildSettingDB(index=True)
                 session.add(new_setting)
 
-    async def register_guild(self, guild_id: int, bot_manager_id: int, bot_user_id: int) -> None:
+    async def register_guild(
+        self, guild_id: int, bot_manager_id: int, bot_user_id: int
+    ) -> None:
         """ギルドの設定を登録する関数
 
         Args:
@@ -63,11 +64,14 @@ class SettingManager():
                 new_guild = GuildSettingDB(
                     guild_id=guild_id,
                     bot_manager_id=bot_manager_id,
-                    bot_user_id=bot_user_id)
+                    bot_user_id=bot_user_id,
+                )
 
                 session.add(new_guild)
 
-    async def update_guild(self, guild_id: int, bot_manager_id: int, bot_user_id: int) -> None:
+    async def update_guild(
+        self, guild_id: int, bot_manager_id: int, bot_user_id: int
+    ) -> None:
         """ギルドの設定を更新する関数
 
         Args:
@@ -77,10 +81,11 @@ class SettingManager():
         """
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = update(GuildSettingDB).where(
-                    GuildSettingDB.guild_id == guild_id).values(
-                    bot_manager_id=bot_manager_id,
-                    bot_user_id=bot_user_id)
+                stmt = (
+                    update(GuildSettingDB)
+                    .where(GuildSettingDB.guild_id == guild_id)
+                    .values(bot_manager_id=bot_manager_id, bot_user_id=bot_user_id)
+                )
                 await session.execute(stmt)
 
     async def is_exist(self, guild_id: int) -> bool:
@@ -94,8 +99,7 @@ class SettingManager():
         """
         async with AsyncSession(engine) as session:
             async with session.begin():
-                stmt = select(GuildSettingDB).where(
-                    GuildSettingDB.guild_id == guild_id)
+                stmt = select(GuildSettingDB).where(GuildSettingDB.guild_id == guild_id)
                 result = await session.execute(stmt)
                 result = result.fetchone()
                 if result is not None:
@@ -114,8 +118,7 @@ class SettingManager():
         """
         async with AsyncSession(engine, expire_on_commit=True) as session:
             async with session.begin():
-                stmt = select(GuildSettingDB).where(
-                    GuildSettingDB.guild_id == guild_id)
+                stmt = select(GuildSettingDB).where(GuildSettingDB.guild_id == guild_id)
                 result = await session.execute(stmt)
                 result = result.fetchone()
 
@@ -123,9 +126,8 @@ class SettingManager():
                     return None
 
                 guildsetting = GuildSetting(
-                    result[0].guild_id,
-                    result[0].bot_manager_id,
-                    result[0].bot_user_id)
+                    result[0].guild_id, result[0].bot_manager_id, result[0].bot_user_id
+                )
 
         return guildsetting
 

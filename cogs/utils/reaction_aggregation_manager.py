@@ -34,7 +34,7 @@ class ReactionParameter:
     author_id: int
     created_at: datetime
     notified_at: datetime | None
-    remind: int
+    remind: int | None
     ping_id: list[int]
 
 
@@ -388,8 +388,9 @@ if __name__ == "__main__":
     reaction_mng = AggregationManager()
     result = asyncio.run(reaction_mng.get_all_not_reminded_aggregation())
 
-    for i in result:
-        print(i)
+    if result is not None:
+        for i in result:
+            print(i)
 
     # asyncio.run(guild_mng.register_setting())
 

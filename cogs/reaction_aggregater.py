@@ -16,7 +16,7 @@ from .utils.setting_manager import SettingManager
 c = CommonUtil()
 logger = logging.getLogger("discord")
 
-target_value_dict = {}
+target_value_dict: dict[str, int] = {}
 
 
 async def app_has_bot_manager(interaction: discord.Interaction) -> bool:
@@ -94,14 +94,14 @@ class ReactionList(ListPageSource):
 
         return embed
 
-    async def format_page(self, menu, entries):
+    async def format_page(self, menu, page):
         """
         fields = []
 
         for entry in entries:
             fields.append((entry.brief, syntax(entry)))
         """
-        return await self.write_page(menu, entries)
+        return await self.write_page(menu, page)
 
 
 class Select(discord.ui.RoleSelect):
@@ -113,11 +113,12 @@ class Select(discord.ui.RoleSelect):
         self.cog = cog
 
     async def callback(self, interaction: discord.Interaction):
-        if self.view is None:
+        if not isinstance(self.view, SelectView) or self.view.message is None:
             return
         # select menuを無効にする
         for item in self.view.children:
-            item.disabled = True
+            if isinstance(item, (discord.ui.Button, discord.ui.Select)):
+                item.disabled = True
         await self.view.message.edit(view=self.view)
 
         if isinstance(interaction.message, discord.Message):
@@ -168,10 +169,6 @@ class Select(discord.ui.RoleSelect):
 
         if interaction.channel is None:
             logger.warning("interaction.channel is None")
-            return
-
-        if self.view is None:
-            logger.warning("self.view is None")
             return
 
         await self.aggregation_mng.register_aggregation(
@@ -204,11 +201,12 @@ class PersonalSelect(discord.ui.UserSelect):
         self.cog = cog
 
     async def callback(self, interaction: discord.Interaction):
-        if self.view is None:
+        if not isinstance(self.view, PersonalSelectView) or self.view.message is None:
             return
         # select menuを無効にする
         for item in self.view.children:
-            item.disabled = True
+            if isinstance(item, (discord.ui.Button, discord.ui.Select)):
+                item.disabled = True
         await self.view.message.edit(view=self.view)
 
         if isinstance(interaction.message, discord.Message):
@@ -261,10 +259,6 @@ class PersonalSelect(discord.ui.UserSelect):
             logger.warning("interaction.channel is None")
             return
 
-        if self.view is None:
-            logger.warning("self.view is None")
-            return
-
         await self.aggregation_mng.register_aggregation(
             message_id=msg.id,
             command_id=self.view.message.id,
@@ -288,14 +282,19 @@ class PersonalSelect(discord.ui.UserSelect):
 class SelectView(discord.ui.View):
     def __init__(self, cog):
         super().__init__(timeout=120)
-        self.add_item(Select(cog))
+        self.message: discord.InteractionMessage | None = None
+        self.select = Select(cog)
+        self.add_item(self.select)
 
     async def on_timeout(self):
         # タイムアウトしたら消す
         for item in self.children:
-            item.disabled = True  # type: ignore
+            if isinstance(item, (discord.ui.Button, discord.ui.Select)):
+                item.disabled = True
+        if self.message is None:
+            return
         try:
-            await self.message.edit(view=self)  # type: ignore
+            await self.message.edit(view=self)
         except discord.NotFound:
             pass
 
@@ -324,21 +323,23 @@ class SelectView(discord.ui.View):
             return
         await interaction.channel.send(f"エラーが発生しました。{error}")
 
-    async def wait(self):
-        print("wait")
-
 
 class PersonalSelectView(discord.ui.View):
     def __init__(self, cog):
         super().__init__(timeout=120)
-        self.add_item(PersonalSelect(cog))
+        self.message: discord.InteractionMessage | None = None
+        self.select = PersonalSelect(cog)
+        self.add_item(self.select)
 
     async def on_timeout(self):
         # タイムアウトしたら消す
         for item in self.children:
-            item.disabled = True  # type: ignore
+            if isinstance(item, (discord.ui.Button, discord.ui.Select)):
+                item.disabled = True
+        if self.message is None:
+            return
         try:
-            await self.message.edit(view=self)  # type: ignore
+            await self.message.edit(view=self)
         except discord.NotFound:
             pass
 
@@ -366,9 +367,6 @@ class PersonalSelectView(discord.ui.View):
         if not isinstance(interaction.channel, discord.abc.Messageable):
             return
         await interaction.channel.send(f"エラーが発生しました。{error}")
-
-    async def wait(self):
-        print("wait")
 
 
 class Confirm(discord.ui.View):
@@ -670,8 +668,8 @@ class ReactionAggregator(commands.Cog):
         view = SelectView(self)
         await interaction.response.send_message("対象を選択してください", view=view)
 
-        view.message = await interaction.original_response()  # type: ignore
-        target_value_dict[view.children[0].custom_id] = target_value  # type: ignore
+        view.message = await interaction.original_response()
+        target_value_dict[view.select.custom_id] = target_value
 
     @count.error
     async def count_error(self, interaction: discord.Interaction, error: Exception):
@@ -701,8 +699,8 @@ class ReactionAggregator(commands.Cog):
         view = PersonalSelectView(self)
         await interaction.response.send_message("対象を選択してください", view=view)
 
-        view.message = await interaction.original_response()  # type: ignore
-        target_value_dict[view.children[0].custom_id] = target_value  # type: ignore
+        view.message = await interaction.original_response()
+        target_value_dict[view.select.custom_id] = target_value
 
     @personal_count.error
     async def personal_count_error(

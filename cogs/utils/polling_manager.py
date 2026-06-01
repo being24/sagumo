@@ -1,12 +1,11 @@
 import asyncio
-import dataclasses
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Union
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.schema import Column
 from sqlalchemy.sql.sqltypes import DATETIME

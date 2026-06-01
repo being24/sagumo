@@ -2,7 +2,7 @@ import logging
 
 import discord
 
-from cogs.utils.reaction_aggregation_manager import ReactionParameter
+from .reaction_aggregation_manager import ReactionParameter
 
 from .setting_manager import SettingManager
 

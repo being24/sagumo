@@ -1,16 +1,15 @@
 import asyncio
-import dataclasses
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from dateutil.relativedelta import relativedelta
 from sqlalchemy import delete, or_, select, update
 from sqlalchemy.dialects.sqlite import insert
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.schema import Column
-from sqlalchemy.types import BOOLEAN, DATETIME, VARCHAR, BigInteger
+from sqlalchemy.types import BOOLEAN, DATETIME, BigInteger
 
 try:
     from .db import engine
@@ -136,7 +135,9 @@ class InactiveManager:
         Returns:
             Optional[List[int]]: 非アクティブなメンバーID
         """
-        stmt = select(InactiveDetectorDB.user_id).where(InactiveDetectorDB.active == False)
+        stmt = select(InactiveDetectorDB.user_id).where(
+            InactiveDetectorDB.active.is_(False)
+        )
 
         async with AsyncSession(engine) as session:
             async with session.begin():
