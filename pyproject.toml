@@ -14,7 +14,7 @@ dependencies = [
     "python-dotenv>=1.2.1",
     "requests-oauthlib>=2.0.0",
     "sentry-sdk>=2.48.0",
-    "sqlalchemy>=2.0.45",
+    "sqlalchemy>=2.0.51",
 ]
 
 [dependency-groups]
