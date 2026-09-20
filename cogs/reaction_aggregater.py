@@ -1327,7 +1327,6 @@ class ReactionAggregator(commands.Cog):
     @tasks.loop(minutes=1.0)
     async def reaction_reminder(self) -> None:
         await self.delete_notified()
-        await self.delete_expired_aggregation()
         await self.remind()
 
     @reaction_reminder.before_loop
