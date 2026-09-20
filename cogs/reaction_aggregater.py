@@ -1,6 +1,7 @@
 import asyncio
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
+
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
@@ -10,8 +11,8 @@ from sqlalchemy.sql.elements import Null
 from .utils.common import CommonUtil
 from .utils.dm_notification_role_manager import DMNotificationRoleManager
 from .utils.reaction_aggregation_manager import AggregationManager, ReactionParameter
+from .utils.remind_schedule import calc_next_remind_at
 from .utils.setting_manager import SettingManager
-
 
 c = CommonUtil()
 logger = logging.getLogger("discord")
@@ -477,11 +478,11 @@ class ReactionAggregator(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        """on_ready時に発火する関数"""
-        await self.aggregation_mng.create_table()
-        await self.setting_mng.create_table()
-        await self.dm_notification_mng.create_table()
+        """on_ready時に発火する関数
 
+        create_table系はreaction_reminder.before_loopに一本化している
+        （on_ready・before_loopの双方から呼ぶとALTER TABLEが競合するため）。
+        """
         await self.bot.tree.sync()
 
     @commands.Cog.listener()
@@ -1190,9 +1191,11 @@ class ReactionAggregator(commands.Cog):
                 await self.change_delete_msg(reaction.channel_id, reaction.message_id)
 
     async def remind(self) -> None:
-        """リマインドを行う関数"""
+        """リマインドを行う関数
 
-        # 12h, 24h, 以後24h間隔が個人的には理想です
+        初回は集計作成から12時間後に送信し、以降は1週間間隔でギルド設定の時刻
+        （既定21時、±1時間で調整可）に送る。
+        """
 
         all_aggregation = await self.aggregation_mng.get_all_aggregation()
 
@@ -1207,23 +1210,36 @@ class ReactionAggregator(commands.Cog):
 
             try:
                 elapsed_time = now - reaction.created_at
-                if reaction.remind == "" or reaction.remind is None:  # 要修正
-                    if elapsed_time.total_seconds() >= 12 * 3600:
-                        await self.send_remind(
-                            reaction, elapsed_time.days, elapsed_time
-                        )
+
+                if reaction.next_remind_at is None:
+                    if elapsed_time.total_seconds() < 12 * 3600:
+                        continue
+                    offset = await self.setting_mng.get_remind_hour_offset(
+                        reaction.guild_id
+                    )
+                    # 送信直後の再送を防ぐため、直近21時ではなく1週間後を
+                    # 基準にした直近21時を初回の次回予定とする
+                    next_remind_at = calc_next_remind_at(
+                        now + timedelta(days=7), 21 + offset
+                    )
                 else:
-                    if elapsed_time.days != reaction.remind:
-                        await self.send_remind(
-                            reaction, reaction.remind + 1, elapsed_time
-                        )
+                    if now < reaction.next_remind_at:
+                        continue
+                    # 2回目以降は直近hourの再計算をせず単純加算する
+                    # （送信が予定時刻より遅れると繰り上がりで8日間隔になるため）
+                    next_remind_at = reaction.next_remind_at + timedelta(days=7)
+
+                await self.send_remind(reaction, next_remind_at, elapsed_time)
             except Exception:
                 logger.exception(
                     f"リマインド処理に失敗しました。message_id={reaction.message_id} guild_id={reaction.guild_id}"
                 )
 
     async def send_remind(
-        self, reaction: ReactionParameter, val: int, elapsed_time: timedelta
+        self,
+        reaction: ReactionParameter,
+        next_remind_at: datetime,
+        elapsed_time: timedelta,
     ) -> None:
         """リマインドを送信する関数
 
@@ -1288,7 +1304,9 @@ class ReactionAggregator(commands.Cog):
                 f"Forbidden @send_remind guild_id : {reaction.guild_id} channel_id : {reaction.channel_id} message_id : {reaction.message_id}"
             )
             return
-        await self.aggregation_mng.set_value_to_remind(reaction.message_id, val)
+        await self.aggregation_mng.set_value_to_next_remind_at(
+            reaction.message_id, next_remind_at
+        )
         await asyncio.sleep(0.3)
 
     async def delete_expired_aggregation(self) -> None:
@@ -1309,12 +1327,17 @@ class ReactionAggregator(commands.Cog):
     @tasks.loop(minutes=1.0)
     async def reaction_reminder(self) -> None:
         await self.delete_notified()
+        await self.delete_expired_aggregation()
         await self.remind()
 
     @reaction_reminder.before_loop
     async def before_printer(self):
         print("reaction waiting...")
         await self.bot.wait_until_ready()
+        # create_table系はここに一本化する（on_ready側と並行実行するとALTER TABLEが競合するため）
+        await self.aggregation_mng.create_table()
+        await self.setting_mng.create_table()
+        await self.dm_notification_mng.create_table()
 
     @reaction_reminder.error
     async def error(self, error) -> None:
