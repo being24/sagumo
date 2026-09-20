@@ -20,5 +20,11 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pyrefly>=0.46.0",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
     "ruff>=0.14.10",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+asyncio_mode = "auto"
