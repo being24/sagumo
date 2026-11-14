@@ -42,18 +42,20 @@ class MyModal(commands.Cog, name="Modal管理用cog"):
                         "テキストチャンネル限定です", ephemeral=True
                     )
                     return
-                await interaction.response.send_message(
-                    "代理投稿を行いました", ephemeral=True
-                )
+                await interaction.response.defer(ephemeral=True)
                 try:
                     await interaction.channel.send(self.answer.value)
                 except discord.Forbidden:
-                    await interaction.response.send_message(
+                    await interaction.followup.send(
                         "メッセージの送信に失敗しました。Forbidden", ephemeral=True
                     )
                 except discord.HTTPException:
-                    await interaction.response.send_message(
+                    await interaction.followup.send(
                         "メッセージの送信に失敗しました。HTTPException", ephemeral=True
+                    )
+                else:
+                    await interaction.followup.send(
+                        "代理投稿を行いました", ephemeral=True
                     )
 
         await interaction.response.send_modal(ProxyModal())

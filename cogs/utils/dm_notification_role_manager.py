@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.schema import Column
 from sqlalchemy.sql.sqltypes import BOOLEAN
 from sqlalchemy.types import BigInteger
