@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.schema import Column
 from sqlalchemy.sql.sqltypes import DATETIME
 from sqlalchemy.types import VARCHAR, BigInteger
